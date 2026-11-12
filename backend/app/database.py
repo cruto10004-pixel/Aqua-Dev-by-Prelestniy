@@ -228,8 +228,12 @@ def init_db(path: Path = DB_PATH) -> None:
             created_at  REAL    NOT NULL,
             expires_at  REAL    NOT NULL,
             tries       INTEGER NOT NULL DEFAULT 0,
-            used        INTEGER NOT NULL DEFAULT 0)""")
+            used        INTEGER NOT NULL DEFAULT 0,
+            purpose     TEXT    NOT NULL DEFAULT 'register')""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email)")
+        ecols = {r["name"] for r in conn.execute("PRAGMA table_info(email_codes)")}
+        if "purpose" not in ecols:
+            conn.execute("ALTER TABLE email_codes ADD COLUMN purpose TEXT NOT NULL DEFAULT 'register'")
         # Блок 4: пересланные, закреплённое сообщение, прочитанность
         if "fwd" not in cols:
             conn.execute("ALTER TABLE messages ADD COLUMN fwd TEXT")
