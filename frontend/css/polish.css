@@ -55,6 +55,32 @@
 }
 .auth__title { letter-spacing: .01em; }
 
+/* ---------- Переключение Вход/Регистрация: высота перетекает, не скачет ----------
+   .auth-view.js во время свапа сам выставляет inline height на #auth-forms
+   и временно добавляет классы ниже; высота в покое всегда auto. */
+.auth__forms {
+  overflow: hidden;
+}
+.auth__forms.is-morphing {
+  transition: height var(--dur) var(--ease);
+}
+.auth-form--out {
+  animation: auth-form-out .14s var(--ease) both;
+}
+.auth-form--in {
+  animation: auth-form-in .18s var(--ease) both;
+}
+@keyframes auth-form-out {
+  to { opacity: 0; transform: translateY(-.375rem) scale(.99); }
+}
+@keyframes auth-form-in {
+  from { opacity: 0; transform: translateY(.375rem) scale(.99); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth__forms.is-morphing { transition: none; }
+  .auth-form--out, .auth-form--in { animation: none; }
+}
+
 /* Переключатель входа/регистрации — пилюля с плавным ползунком */
 .tabs {
   background: var(--aqua-100);

@@ -42,13 +42,70 @@ export function initAuthView({ onLogin, onSendCode, onRegister }) {
   const resendBtn = $('#code-resend');
   let codeStage = false, timer = null;
 
+  // Переключение вкладок раньше дёргало экран: формы разной высоты менялись
+  // мгновенно (атрибут hidden), карточка скачком меняла размер. Теперь высота
+  // обёртки плавно перетекает к нужной, а форма, которую показываем, тихо
+  // проявляется — без скачка и без дорогих эффектов (только opacity/transform/height).
+  const formsWrap = $('#auth-forms');
+  const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let swapToken = 0, pendingSwap = null;
+
+  function naturalHeight(form) {
+    if (!form.hidden) return form.offsetHeight;
+    // Измеряем высоту скрытой формы, не показывая её и не ломая раскладку остальных.
+    form.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
+    form.hidden = false;
+    const h = form.offsetHeight;
+    form.hidden = true;
+    form.style.cssText = '';
+    return h;
+  }
+
   function setTab(name) {
+    if (tabs.dataset.active === name) return;
     tabs.dataset.active = name;
     $('#tab-login').setAttribute('aria-selected', String(name === 'login'));
     $('#tab-register').setAttribute('aria-selected', String(name === 'register'));
-    loginForm.hidden = name !== 'login';
-    regForm.hidden = name !== 'register';
-    (name === 'login' ? lUser : rUser).focus();
+
+    const from = name === 'login' ? regForm : loginForm;
+    const to = name === 'login' ? loginForm : regForm;
+    const focusTarget = name === 'login' ? lUser : rUser;
+
+    if (reduceMotion()) {
+      from.hidden = true;
+      to.hidden = false;
+      focusTarget.focus({ preventScroll: true });
+      return;
+    }
+
+    const token = ++swapToken;
+    if (pendingSwap) { clearTimeout(pendingSwap); pendingSwap = null; }
+
+    const startH = formsWrap.getBoundingClientRect().height;
+    const endH = naturalHeight(to);
+    formsWrap.style.height = startH + 'px';
+    formsWrap.classList.add('is-morphing');
+    from.classList.add('auth-form--out');
+    // force reflow перед новым значением высоты, иначе transition не запустится
+    void formsWrap.offsetHeight;
+    formsWrap.style.height = endH + 'px';
+
+    pendingSwap = setTimeout(() => {
+      if (token !== swapToken) return; // переключили ещё раз, пока ждали — эта смена уже не актуальна
+      from.hidden = true;
+      from.classList.remove('auth-form--out');
+      to.hidden = false;
+      to.classList.add('auth-form--in');
+      void to.offsetHeight;
+      to.classList.remove('auth-form--in');
+      focusTarget.focus({ preventScroll: true });
+      pendingSwap = setTimeout(() => {
+        if (token !== swapToken) return;
+        formsWrap.style.height = '';
+        formsWrap.classList.remove('is-morphing');
+        pendingSwap = null;
+      }, 220);
+    }, 140);
   }
   $('#tab-login').addEventListener('click', () => setTab('login'));
   $('#tab-register').addEventListener('click', () => setTab('register'));

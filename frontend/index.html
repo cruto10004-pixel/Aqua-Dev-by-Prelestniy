@@ -208,6 +208,8 @@
         <button class="tabs__tab" type="button" role="tab" id="tab-register" aria-selected="false">Регистрация</button>
       </div>
 
+      <!-- Обёртка нужна только для плавной анимации высоты при переключении вкладок -->
+      <div class="auth__forms" id="auth-forms">
       <!-- Вход: только логин и пароль -->
       <form id="form-login" novalidate>
         <div class="form-error" id="login-error" role="alert" hidden></div>
@@ -258,6 +260,7 @@
           <button class="btn btn--ghost" type="button" id="code-resend" disabled>Отправить снова</button>
         </div>
       </form>
+      </div>
     </div>
     <button class="auth__cancel" type="button" id="auth-cancel" hidden>← Вернуться в прежний аккаунт</button>
   </main>

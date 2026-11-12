@@ -8,6 +8,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await page.waitForSelector('#form-login:not([hidden])');
   ok(await page.locator('#login-username').isVisible() && await page.locator('#login-password').isVisible() && !(await page.locator('#reg-code').isVisible()), 'вход: только логин и пароль');
   await page.click('#tab-register');
+  await page.waitForSelector('#form-register:not([hidden])'); // переключение теперь анимированное (не мгновенное)
   ok(await page.locator('#reg-username').isVisible() && await page.locator('#reg-password').isVisible(), 'регистрация: логин и пароль');
   await page.fill('#reg-username', 'bad name!'); await page.fill('#reg-password', 'short'); await page.fill('#reg-email', 'nope');
   await page.click('#reg-submit');
