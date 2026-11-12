@@ -59,9 +59,9 @@
   transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background-color var(--dur-fast);
 }
 .input::placeholder { color: var(--color-text-muted); opacity: .8; }
-.input:focus { background: var(--color-surface); border-color: var(--aqua-teal); box-shadow: 0 0 0 .2rem var(--color-focus); outline: none; }
+.input:focus { background: var(--color-surface); border-color: var(--aqua-teal); outline: none; }
 .field--error .input { border-color: var(--color-danger); }
-.field--error .input:focus { box-shadow: 0 0 0 .2rem rgba(201, 60, 75, .25); }
+.field--error .input:focus { border-color: var(--color-danger); }
 .field__control .input { padding-right: 3rem; }
 .field__control .btn-icon { position: absolute; right: .125rem; }
 .field__error { min-height: 1.1em; font-size: var(--fs-xs); color: var(--color-danger); }
