@@ -1,0 +1,28 @@
+const { chromium } = require('playwright'); const { setup } = require('./mock.js');
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+(async () => {
+  const b = await chromium.launch();
+  const { page, errs } = await setup(b, { viewport: { width: 420, height: 820 }, hasTouch: true });
+  await page.addInitScript(() => localStorage.setItem('aqua.token', 'tok'));
+  await page.goto('http://127.0.0.1:8765/index.html'); await page.waitForSelector('#chat-list .chat-item'); await page.waitForTimeout(300);
+  const p1 = await page.locator('#nav-pill').boundingBox();
+  await page.click('#nav-contacts'); await page.waitForTimeout(500);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  const p2 = await page.locator('#nav-pill').boundingBox();
+  ok(Math.abs(p1.x - p2.x) > 10, 'подсветка вкладки переехала: ' + Math.round(p1.x) + '→' + Math.round(p2.x));
+  await page.click('#nav-chats'); await page.click('#btn-new-channel');
+  await page.fill('.dialog__input', 'Новости'); await page.keyboard.press('Enter');
+  await page.waitForSelector('.dialog__input'); await page.fill('.dialog__input', '@news_aqua'); await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  await page.click('#chat-peer'); await page.waitForSelector('#modal-channel.is-open');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#channel-edit').isVisible(), 'админ видит карандаш сверху справа');
+  ok((await page.locator('#channel-link').textContent()).endsWith('/@news_aqua'), 'ссылка канала показана');
+  await page.click('#channel-edit'); await page.fill('#channel-title-input', 'Новости Aqua'); await page.fill('#channel-desc-input', 'Про всё на свете');
+  await page.click('#channel-save');
+  await page.waitForTimeout(400);
+  ok((await page.locator('#channel-desc').textContent()) === 'Про всё на свете', 'описание сохранено');
+  await page.click('#channel-back'); await page.waitForTimeout(200);
+  ok(errs.length === 0, 'нет ошибок консоли: ' + JSON.stringify(errs));
+  await b.close(); process.exit(fails ? 1 : 0);
+})();

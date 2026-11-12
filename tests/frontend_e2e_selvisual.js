@@ -1,0 +1,25 @@
+const { chromium } = require('playwright'); const { setup } = require('./mock.js');
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+(async () => {
+  const b = await chromium.launch();
+  const { page, errs } = await setup(b, { viewport: { width: 420, height: 820 }, hasTouch: true });
+  await page.addInitScript(() => { localStorage.setItem('aqua.token', 'tok'); });
+  await page.goto('http://127.0.0.1:8765/index.html'); await page.waitForSelector('#chat-list .chat-item');
+  await page.click('.chat-item[data-chat-id="1"]'); await page.waitForSelector('#messages .msg'); await page.waitForTimeout(300);
+  const us = (sel) => page.locator(sel).last().evaluate((e) => getComputedStyle(e).userSelect);
+  ok(await us('#messages .msg__text') === 'none', 'текст невыделяем, пока сообщение не выделено');
+  ok(await us('#messages .msg__meta') === 'none', 'время невыделяемо');
+  const bb = await page.locator('#messages .msg--in .msg__bubble').last().boundingBox();
+  await page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); const t = () => new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+    el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [t()], targetTouches: [t()], changedTouches: [t()] })); window.__tt = el; }, [bb.x + 20, bb.y + 10]);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__tt.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [] })));
+  await page.waitForSelector('.msg.is-selected');
+  ok(await us('.msg.is-selected .msg__text') === 'text', 'у выделенного сообщения текст выделяется');
+  ok(await us('.msg.is-selected .msg__meta') === 'none', 'время и у выделенного невыделяемо');
+  const w = await page.locator('.msg.is-selected').evaluate((e) => e.getBoundingClientRect().width);
+  ok(w > 330, 'строка сообщения на всю ширину: ' + Math.round(w));
+  await page.screenshot({ path: 'shots/selvisual.png' });
+  ok(errs.length === 0, 'нет ошибок консоли');
+  await b.close(); process.exit(fails ? 1 : 0);
+})();

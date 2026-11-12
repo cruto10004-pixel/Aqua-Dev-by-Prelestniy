@@ -1,0 +1,135 @@
+/* ==========================================================================
+   Иконки: размеры, цвета и микроанимации.
+
+   Использование:
+     <button class="btn-icon icon-anim-fly"><svg class="icon"><use href="#i-send"/></svg></button>
+
+   Анимация вешается на РОДИТЕЛЯ (кнопку) и двигает вложенный .icon.
+   Важно: содержимое <use> недоступно CSS-селекторам снаружи, поэтому двигаем
+   сам <svg class="icon">, а для «рисования» используем наследуемые свойства
+   stroke-dasharray / stroke-dashoffset.
+   ========================================================================== */
+
+/* Полупрозрачная заливка для иконок, которые её используют (сейчас — «отправить») */
+.icon { --icon-fill: rgba(0, 90, 141, .14); }
+.icon--white, .btn-icon--send .icon { --icon-fill: rgba(255, 255, 255, .4); }
+/* Иконка в круглой кнопке отправки чуть крупнее, чтобы не «тонула» в круге */
+.btn-icon--send .icon { width: 1.625rem; height: 1.625rem; }
+
+/* ---------- Размеры и цвета ---------- */
+.icon--sm { width: 1.125rem; height: 1.125rem; }
+.icon--lg { width: 2rem;     height: 2rem; }
+.icon--xl { width: 3rem;     height: 3rem; stroke-width: 1.5; }
+
+.icon--white   { stroke: #fff; }
+.icon--muted   { stroke: var(--color-text-muted); }
+.icon--teal    { stroke: var(--aqua-teal); }
+.icon--danger  { stroke: var(--color-danger); }
+
+/* Базовый переход для всех иконок внутри кнопок */
+.btn-icon .icon,
+.btn .icon {
+  transition: transform var(--dur) var(--ease-back), stroke var(--dur-fast) var(--ease);
+  will-change: transform;
+}
+
+/* ---------- Общее нажатие (все устройства) ---------- */
+.btn-icon:active .icon { transform: scale(.85); }
+
+/* ---------- Наведение: только там, где есть мышь ----------
+   На сенсорных экранах :hover «залипает» после тапа, поэтому оборачиваем в (hover: hover). */
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon:hover .icon { transform: scale(1.12); }
+
+  /* Отправить: «рвётся» вперёд */
+  .icon-anim-fly:hover .icon  { transform: translateX(.25rem) scale(1.08); }
+
+  /* Настройки: поворот ползунков/шестерни */
+  .icon-anim-spin:hover .icon { transform: rotate(90deg); }
+
+  /* Закрыть: поворот на четверть оборота */
+  .icon-anim-turn:hover .icon { transform: rotate(90deg) scale(1.1); }
+
+  /* Назад: стрелка «подаётся» влево */
+  .icon-anim-nudge:hover .icon { transform: translateX(-.25rem); }
+
+  /* Скрепка: покачивание */
+  .icon-anim-wiggle:hover .icon { -webkit-animation: icon-wiggle .5s var(--ease); animation: icon-wiggle .5s var(--ease); }
+
+  /* Смайлик: лёгкий наклон */
+  .icon-anim-tilt:hover .icon { transform: rotate(-12deg) scale(1.12); }
+
+  /* Микрофон: пульс */
+  .icon-anim-pulse:hover .icon { -webkit-animation: icon-pulse 1s ease-in-out infinite; animation: icon-pulse 1s ease-in-out infinite; }
+
+  /* Поиск: «лупа приближается» */
+  .icon-anim-zoom:hover .icon { transform: scale(1.2) translate(-.0625rem, -.0625rem); }
+}
+
+/* Фокус с клавиатуры получает ту же реакцию, что и наведение */
+.icon-anim-fly:focus-visible .icon   { transform: translateX(.25rem); }
+.icon-anim-spin:focus-visible .icon  { transform: rotate(90deg); }
+.icon-anim-turn:focus-visible .icon  { transform: rotate(90deg); }
+.icon-anim-nudge:focus-visible .icon { transform: translateX(-.25rem); }
+
+/* ---------- Анимации по событию (JS добавляет .is-animating на ~600 мс) ---------- */
+/* Нажатие «отправить»: иконка улетает и возвращается */
+.icon-anim-fly.is-animating .icon { -webkit-animation: icon-fly-away .55s var(--ease); animation: icon-fly-away .55s var(--ease); }
+
+/* «Галочка (готово)»: рисуется по контуру */
+.icon-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+.icon-draw.is-animating {
+  -webkit-animation: icon-draw .45s var(--ease) both;
+  animation: icon-draw .45s var(--ease) both;
+}
+
+/* Появление иконки «с отскоком» (например, после выбора файла) */
+.icon-pop { -webkit-animation: icon-pop .4s var(--ease-back) both; animation: icon-pop .4s var(--ease-back) both; }
+
+/* ---------- Состояния кнопок-иконок ---------- */
+.btn-icon.is-active { background: var(--aqua-200); }          /* выбранный инструмент редактора */
+.btn-icon.is-active .icon { stroke: var(--aqua-navy); }
+.btn-icon:disabled { opacity: .4; pointer-events: none; }
+
+/* Подпись под иконкой — для сетки инструментов редактора и файлового менеджера */
+.icon-tile {
+  display: grid; justify-items: center; gap: .25rem;
+  padding: .625rem .5rem; border-radius: var(--radius-md);
+  font-size: var(--fs-xs); color: var(--color-text-muted);
+  transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.icon-tile:hover  { background: var(--aqua-100); }
+.icon-tile:active { transform: scale(.94); }
+.icon-tile.is-active { background: var(--aqua-200); color: var(--aqua-navy); }
+
+/* ---------- Кадры ---------- */
+@-webkit-keyframes icon-wiggle { 0%,100% { -webkit-transform: rotate(0); } 25% { -webkit-transform: rotate(-14deg); } 60% { -webkit-transform: rotate(10deg); } }
+@keyframes icon-wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 60% { transform: rotate(10deg); } }
+
+@-webkit-keyframes icon-pulse { 0%,100% { -webkit-transform: scale(1); } 50% { -webkit-transform: scale(1.18); } }
+@keyframes icon-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+
+@-webkit-keyframes icon-fly-away {
+  0%   { -webkit-transform: none; opacity: 1; }
+  45%  { -webkit-transform: translateX(1.5rem) scale(.6); opacity: 0; }
+  46%  { -webkit-transform: translateX(-1.5rem) scale(.6); opacity: 0; }
+  100% { -webkit-transform: none; opacity: 1; }
+}
+@keyframes icon-fly-away {
+  0%   { transform: none; opacity: 1; }
+  45%  { transform: translateX(1.5rem) scale(.6); opacity: 0; }
+  46%  { transform: translateX(-1.5rem) scale(.6); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+
+@-webkit-keyframes icon-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes icon-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+@-webkit-keyframes icon-pop { 0% { -webkit-transform: scale(.4); opacity: 0; } 100% { -webkit-transform: scale(1); opacity: 1; } }
+@keyframes icon-pop { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* prefers-reduced-motion обрабатывается глобально в animations.css:
+   все анимации и переходы сводятся к мгновенным. */

@@ -1,0 +1,201 @@
+/* ==========================================================================
+   Раскладка. Mobile-first: базовые правила — для телефона,
+   далее расширяем media-запросами (планшет ≥48rem, десктоп ≥75rem).
+
+   Состояния корня #app (управляются JS на Этапе 4):
+     data-screen="boot" | "auth" | "chat" — какой экран показан (boot: проверяем сохранённый вход, ничего не мигает)
+     data-chat-open="true" | "false"    — на телефоне: открыт ли диалог поверх списка
+   ========================================================================== */
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100vh;                 /* запасной вариант */
+  height: 100dvh;                /* учитывает адресную строку мобильных браузеров */
+  height: var(--vvh, 100dvh);    /* touch.js: видимая высота с учётом экранной клавиатуры iOS */
+  overflow: hidden;
+}
+
+.app[data-screen="boot"] .messenger,
+.app[data-screen="boot"] .auth,
+.app[data-screen="auth"] .messenger { display: none; }
+.app[data-screen="chat"] .auth      { display: none; }
+
+/* ---------- Экран входа / регистрации ---------- */
+.auth {
+  position: relative;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, var(--safe-top)) max(1rem, var(--safe-right))
+           max(1rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, rgba(18, 144, 191, .28), transparent 60%),
+    radial-gradient(50rem 28rem at -10% 110%, rgba(20, 108, 164, .22), transparent 60%),
+    linear-gradient(180deg, var(--aqua-sky) 0%, var(--aqua-100) 100%);
+}
+.auth__card {
+  width: min(100%, 26rem);
+  padding: clamp(1.25rem, 5vw, 2.25rem);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.auth__brand {
+  display: flex; flex-direction: column; align-items: center;
+  gap: .5rem; margin-bottom: 1.5rem; text-align: center;
+}
+.auth__logo { width: 5rem; height: 5rem; border-radius: 1.25rem; box-shadow: var(--shadow-md); }
+.auth__title { font-size: var(--fs-xl); font-weight: 700; color: var(--color-primary); letter-spacing: .02em; }
+.auth__subtitle { color: var(--color-text-muted); font-size: var(--fs-sm); }
+
+/* ---------- Мессенджер ---------- */
+.messenger {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--color-surface);
+}
+
+/* Телефон: панели лежат друг на друге, диалог выезжает справа */
+.sidebar,
+.chat {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  -webkit-transition: -webkit-transform var(--dur-slow) var(--ease);
+  transition: transform var(--dur-slow) var(--ease), opacity var(--dur-slow) var(--ease);
+}
+.sidebar {
+  z-index: var(--z-sidebar);
+  background: var(--color-surface);
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+}
+.chat {
+  z-index: var(--z-chat);
+  background: var(--color-bg);
+  -webkit-transform: translateX(100%);
+  transform: translateX(100%);
+  visibility: hidden;                         /* недоступен для Tab, пока закрыт */
+  transition: transform var(--dur-slow) var(--ease), visibility 0s linear var(--dur-slow);
+}
+.app[data-chat-open="true"] .chat {
+  -webkit-transform: translateX(0);
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform var(--dur-slow) var(--ease), visibility 0s;
+}
+.app[data-chat-open="true"] .sidebar {
+  -webkit-transform: translateX(-18%);
+  transform: translateX(-18%);
+  opacity: .6;
+}
+
+/* ---------- Боковая панель ---------- */
+.sidebar__header {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem .75rem;
+  min-height: var(--header-h);
+}
+.sidebar__brand { display: flex; align-items: center; gap: .5rem; flex: 1; min-width: 0; }
+.sidebar__brand img { width: 2rem; height: 2rem; border-radius: .5rem; }
+.sidebar__brand span { font-weight: 700; font-size: var(--fs-lg); color: var(--color-primary); }
+.sidebar__search { padding: 0 .75rem .75rem; }
+.sidebar__list { flex: 1; min-height: 0; padding: 0 .5rem calc(.5rem + var(--safe-bottom)); }
+.sidebar__empty { padding: 2rem 1rem; text-align: center; color: var(--color-text-muted); }
+
+/* ---------- Окно диалога ---------- */
+.chat__header {
+  display: flex; align-items: center; gap: .5rem;
+  min-height: var(--header-h);
+  padding: .5rem .75rem;
+  padding-top: calc(.5rem + var(--safe-top));
+  padding-right: calc(.75rem + var(--safe-right));
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(.75rem);   /* Safari */
+  backdrop-filter: saturate(1.4) blur(.75rem);
+  box-shadow: var(--shadow-sm);
+  position: relative; z-index: 1;
+}
+.chat__peer { cursor: pointer; flex: 1; min-width: 0; display: flex; align-items: center; gap: .75rem; }
+
+.chat__messages {
+  flex: 1; min-height: 0;
+  padding: 1rem .75rem;
+  padding-right: calc(.75rem + var(--safe-right));
+  display: flex; flex-direction: column; gap: .25rem;
+  /* Тонкий «морской» узор из градиентов — без растровых картинок */
+  background:
+    var(--chat-wallpaper,
+      radial-gradient(40rem 20rem at 100% 0%, rgba(162, 209, 255, .45), transparent 70%),
+      radial-gradient(40rem 24rem at 0% 100%, rgba(18, 144, 191, .12), transparent 70%)),
+    var(--color-bg);
+  background-size: cover;
+}
+.chat__messages > :first-child { margin-top: auto; }   /* короткая переписка прижата к низу */
+
+.chat__composer {
+  padding: .5rem .75rem calc(.5rem + var(--safe-bottom));
+  padding-left: calc(.75rem + var(--safe-left));
+  padding-right: calc(.75rem + var(--safe-right));
+  background: var(--color-surface);
+  box-shadow: 0 -1px 0 var(--color-border);
+}
+
+/* Пустое состояние (чат не выбран; видно на десктопе/планшете) */
+.chat__placeholder {
+  display: none;
+  flex: 1; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 2rem; gap: 1rem;
+  color: var(--color-text-muted);
+}
+.chat[data-empty="true"] .chat__placeholder { display: flex; }
+.chat[data-empty="true"] .chat__header,
+.chat[data-empty="true"] .chat__messages,
+.chat[data-empty="true"] .chat__composer { display: none; }
+
+/* ==========================================================================
+   Планшет и выше: список и диалог рядом
+   ========================================================================== */
+@media (min-width: 48rem) {
+  .messenger {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  }
+  .app[data-screen="auth"] .messenger { display: none; }
+
+  .sidebar, .chat {
+    position: relative;
+    inset: auto;
+    -webkit-transform: none;
+    transform: none;
+    visibility: visible;
+    opacity: 1;
+    transition: none;
+  }
+  .app[data-chat-open="true"] .sidebar { -webkit-transform: none; transform: none; opacity: 1; }
+  .sidebar { box-shadow: 1px 0 0 var(--color-border); padding-left: 0; }
+  .btn--back { display: none; }               /* «Назад» нужна только на телефоне */
+  .chat__header, .chat__composer { padding-left: 1rem; padding-right: 1rem; }
+  .chat__messages { padding: 1rem 1.25rem; }
+}
+
+/* ==========================================================================
+   Десктоп: колонка сообщений не растягивается на всю ширину
+   ========================================================================== */
+@media (min-width: 75rem) {
+  .chat__messages { padding-inline: max(1.5rem, calc((100% - var(--content-max)) / 2)); }
+  .chat__composer { padding-inline: max(1.5rem, calc((100% - var(--content-max)) / 2)); }
+}
+
+/* Низкие экраны (телефон в ландшафте): уменьшаем шапку */
+@media (max-height: 30rem) and (orientation: landscape) {
+  :root { --header-h: 3rem; }
+  .auth__brand { flex-direction: row; justify-content: center; }
+  .auth__logo { width: 3rem; height: 3rem; }
+}

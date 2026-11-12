@@ -1,0 +1,277 @@
+/* ==========================================================================
+   Полировка дизайна: нежно-голубая тема, мягкие переходы.
+   Подключается последним — уточняет токены и компоненты, не меняя логику.
+   Механика окон (data-screen, data-chat-open, .is-open) остаётся прежней.
+   ========================================================================== */
+
+/* ---------- Шрифт: Inter (латиница + кириллица), лицензия OFL — assets/fonts/LICENSE-Inter.txt.
+   Свой шрифт нужен, чтобы начертания 400/500/600 (700 берётся от 600, без искусственного утолщения) выглядели одинаково на iOS, Android и десктопе:
+   у системных шрифтов (Roboto, SF, Segoe) нет части весов, и браузер подменяет их ближайшими. */
+@font-face { font-family: "Inter"; font-weight: 400; font-style: normal; font-display: swap; src: url("../assets/fonts/Inter-Regular.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 500; font-style: normal; font-display: swap; src: url("../assets/fonts/Inter-Medium.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 600; font-style: normal; font-display: swap; src: url("../assets/fonts/Inter-SemiBold.woff") format("woff"); }
+
+:root {
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* ВАЖНО: палитры («Ночь», «Сирень», свой цвет…) подменяют --aqua-* и --color-* через theme.js.
+     Поэтому здесь и ниже нет жёстких цветов для фонов, текста и акцентов — только переменные темы,
+     иначе новая тема не применится (в «Ночи» появятся белые поля, у цветных палитр — синие кнопки). */
+  --color-border: #DDEBF8;
+  --color-text-muted: #6B8BA4;
+  --grad-primary: linear-gradient(135deg, var(--aqua-teal-600), var(--aqua-navy));
+
+  /* Тени мягче и голубее */
+  --shadow-sm: 0 1px 2px rgba(20, 108, 164, .06), 0 2px 8px rgba(20, 108, 164, .05);
+  --shadow-md: 0 6px 20px rgba(20, 108, 164, .10);
+  --shadow-lg: 0 24px 60px rgba(10, 58, 92, .18);
+
+  /* Более плавная, «водная» кривая движения */
+  --ease: cubic-bezier(.22, .9, .3, 1);
+  --dur-fast: .18s;
+  --dur: .32s;
+  --dur-slow: .5s;
+}
+
+/* ---------- Экран входа: мягкая дымка цвета темы ---------- */
+.auth {
+  background:
+    radial-gradient(70rem 36rem at 90% -12%, color-mix(in srgb, var(--aqua-sky) 55%, transparent), transparent 62%),
+    radial-gradient(56rem 32rem at -12% 112%, color-mix(in srgb, var(--aqua-teal-600) 18%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--aqua-sky) 55%, var(--color-bg)) 0%, var(--color-bg) 100%);
+}
+.auth__card {
+  border: 1px solid var(--color-border);
+  box-shadow: 0 30px 70px rgba(10, 58, 92, .16), 0 2px 6px rgba(20, 108, 164, .06);
+  animation: fade-up .6s var(--ease) both;
+}
+.auth__logo {
+  box-shadow: 0 10px 28px rgba(20, 108, 164, .22);
+  animation: logo-float 5s ease-in-out infinite;
+}
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-.25rem); }
+}
+.auth__title { letter-spacing: .01em; }
+
+/* Переключатель входа/регистрации — пилюля с плавным ползунком */
+.tabs {
+  background: var(--aqua-100);
+  border-radius: var(--radius-pill);
+  padding: .3rem;
+}
+.tabs__thumb {
+  border-radius: var(--radius-pill);
+  box-shadow: 0 2px 8px rgba(20, 108, 164, .12);
+  transition: transform .45s var(--ease);
+}
+
+/* ---------- Поля: мягкий фокус ---------- */
+.input {
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  transition: box-shadow var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.input:hover { box-shadow: inset 0 0 0 1px var(--aqua-300); }
+.input:focus {
+  background: var(--color-surface);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--aqua-teal), 0 0 0 .3rem color-mix(in srgb, var(--aqua-teal) 16%, transparent);
+}
+.field__label { color: var(--color-text); letter-spacing: .01em; }
+
+/* ---------- Кнопки ---------- */
+.btn {
+  border-radius: var(--radius-md);
+  letter-spacing: .01em;
+  transition: background-color var(--dur-fast) var(--ease),
+              box-shadow var(--dur) var(--ease),
+              transform var(--dur-fast) var(--ease),
+              filter var(--dur-fast) var(--ease);
+}
+.btn--primary {
+  background: var(--grad-primary);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--aqua-navy) 30%, transparent);
+}
+.btn--primary:hover {
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--aqua-navy) 40%, transparent);
+  filter: brightness(1.04);
+}
+.btn--primary:active:not(:disabled) { box-shadow: 0 3px 8px color-mix(in srgb, var(--aqua-navy) 30%, transparent); }
+.btn--ghost { background: var(--aqua-50); color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--aqua-200); }
+.btn--ghost:hover { background: var(--aqua-100); }
+
+.btn-icon:hover { background: var(--aqua-100); }
+.btn-icon--send {
+  background: var(--grad-primary);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--aqua-navy) 32%, transparent);
+}
+
+/* ---------- Список чатов ---------- */
+.chat-item {
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.chat-item:hover { background: var(--aqua-50); }
+.chat-item.is-active { background: var(--aqua-100); box-shadow: inset 3px 0 0 var(--aqua-teal); }
+.chat-item__name { color: var(--color-text); }
+.badge {
+  background: var(--grad-primary);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--aqua-navy) 32%, transparent);
+}
+
+/* ---------- Окно диалога ---------- */
+/* var(--chat-wallpaper) — обои из настроек; без них — мягкие пятна цвета темы */
+.chat__messages {
+  background:
+    var(--chat-wallpaper,
+      radial-gradient(44rem 22rem at 100% 0%, color-mix(in srgb, var(--aqua-sky) 45%, transparent), transparent 70%),
+      radial-gradient(40rem 26rem at 0% 100%, color-mix(in srgb, var(--aqua-teal-600) 10%, transparent), transparent 70%)),
+    var(--color-bg);
+  background-size: cover;
+}
+.composer__input {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 1px 2px rgba(20, 108, 164, .05);
+}
+.composer__input:focus {
+  border-color: var(--aqua-teal);
+  box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--aqua-teal) 16%, transparent);
+}
+
+/* ---------- Сообщения ---------- */
+/* Пузыри оформляются стеклянной системой в components.css */
+.day-sep {
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  color: var(--color-text-muted);
+  box-shadow: 0 1px 4px rgba(20, 108, 164, .06);
+}
+.reaction.is-mine { background: var(--aqua-200); border-color: var(--aqua-teal); }
+
+/* ---------- Модальные окна и меню: плавное появление ---------- */
+.modal__backdrop {
+  background: rgba(20, 60, 90, .32);
+  -webkit-backdrop-filter: blur(.5rem);
+  backdrop-filter: blur(.5rem);
+  transition: opacity var(--dur) var(--ease);
+}
+.modal__dialog {
+  border-radius: var(--radius-lg);
+  transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
+}
+.modal__title { color: var(--color-primary); letter-spacing: .01em; }
+
+.menu {
+  border-radius: 1.25rem;
+  box-shadow: 0 16px 44px rgba(10, 58, 92, .20), 0 2px 6px rgba(20, 108, 164, .08);
+  border: 1px solid var(--color-border);
+}
+.menu__action { border-radius: var(--radius-sm); transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+.menu__action:active { transform: scale(.98); }
+.menu__action:hover { background: var(--aqua-50); }
+
+/* ---------- Тост (тёмная плашка с белым текстом в любой теме) ---------- */
+.toast {
+  background: linear-gradient(135deg, #1D5C86, #0F4A73);
+  border-radius: var(--radius-pill);
+  padding: .65rem 1.35rem;
+  box-shadow: 0 12px 32px rgba(10, 58, 92, .28);
+  transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease-back);
+}
+
+/* ---------- Нижнее меню ---------- */
+/* Вид панели и активной вкладки задаёт «стеклянный» блок в components.css (.nav__pill) — не переопределяем */
+.nav__item { transition: color var(--dur) var(--ease), transform var(--dur-fast) var(--ease); }
+
+/* ---------- Переключатели и ползунки ---------- */
+.range input[type=range]::-webkit-slider-thumb { background: var(--aqua-teal-600); }
+.range input[type=range]::-moz-range-thumb { background: var(--aqua-teal-600); }
+.theme-sw[aria-checked="true"] { box-shadow: 0 0 0 .2rem var(--aqua-teal-600); }
+
+/* ---------- Профиль: карточки-плитки ---------- */
+.profile__tile {
+  border-radius: var(--radius-lg);
+  background: var(--aqua-50);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  transition: transform var(--dur-fast) var(--ease), background-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.profile__tile:hover { background: var(--aqua-100); box-shadow: inset 0 0 0 1px var(--aqua-200), 0 4px 12px rgba(20, 108, 164, .08); }
+.profile__info { border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); border-color: transparent; }
+
+/* ---------- Состояния: появление элементов списка ---------- */
+.chat-item.is-new,
+.contacts__row,
+.picker__emoji,
+.picker__sticker {
+  animation: fade-up var(--dur) var(--ease) both;
+}
+
+/* ---------- Прокрутка ---------- */
+.scroll { scrollbar-color: var(--aqua-300) transparent; }
+.scroll::-webkit-scrollbar-thumb { background: var(--aqua-300); }
+
+/* ==========================================================================
+   Типографика: веса и защита от вылезания текста
+   Иерархия: 400 — текст, 500 — подписи и вторичные заголовки,
+   600 — заголовки и имена, 700 — только бренд «Aqua».
+   ========================================================================== */
+body {
+  font-weight: 400;
+  font-feature-settings: "kern", "calt";
+  text-rendering: optimizeLegibility;
+  letter-spacing: .003em;
+}
+
+/* Заголовки и имена: 600 вместо 700 — аккуратнее и легче на кириллице */
+.modal__title, .peer__name, .profile__name, .tg-head__name, .channel-head__name,
+.chat-item__name, .contacts__name, .dialog__title { font-weight: 600; letter-spacing: -.005em; }
+.auth__title, .sidebar__brand span { font-weight: 700; letter-spacing: -.01em; }
+
+/* Подписи и мелкий текст: 500 */
+.field__label, .tabs__tab, .nav__item, .profile__tile, .day-sep, .picker__tab,
+.msg__author, button.msg__author, .tg-section__title, .prefs__title, .list-heading { font-weight: 500; }
+.nav__item.is-active { font-weight: 600; }
+.badge, .avatar, .reaction__more { font-weight: 600; }
+.list-heading, .prefs__title { letter-spacing: .05em; }
+
+/* Любое длинное слово переносится, а не вылезает за край */
+.modal__title, .peer__name, .profile__name, .profile__login, .tg-head__name, .tg-head__login,
+.channel-head__name, .channel-head__sub, .channel-info__value, .contacts__name,
+.tg-row__text, .prefs__nav, .dialog__title, .auth__hint, .form-error, .field__error {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.profile__name, .tg-head__name, .channel-head__name, .dialog__title { text-wrap: balance; max-width: 100%; }
+.msg__text, .profile__bio { overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; }
+
+/* Кнопки с длинной подписью: переносим на две строки вместо вылезания */
+.btn { text-align: center; line-height: 1.2; padding-block: .5rem; }
+
+/* Плитки профиля: колонки строго равной ширины, подписи не упираются в края */
+.profile__tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+.profile__tile { padding: .75rem .25rem; min-width: 0; font-weight: 500; line-height: 1.2; }
+.profile__tile span { max-width: 100%; text-wrap: balance; overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; }
+@media (max-width: 24rem) { .profile__tile { font-size: .6875rem; } }
+
+/* Список чатов: колонка не шире доступного места, иначе длинное имя уносит время за край экрана */
+.chat-item__body { grid-template-columns: minmax(0, 1fr); }
+.chat-item__row { min-width: 0; }
+.chat-item__name, .chat-item__preview { min-width: 0; max-width: 100%; }
+
+/* Нижняя панель: подпись в одну строку, без вылезания на узких экранах */
+.nav__item { font-size: .6875rem; letter-spacing: 0; padding-inline: .125rem; }
+.nav__item > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Доступность: уважать «уменьшить движение» ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .auth__logo { animation: none; }
+  .auth__card,
+  .chat-item.is-new,
+  .contacts__row,
+  .picker__emoji,
+  .picker__sticker { animation: none; }
+}

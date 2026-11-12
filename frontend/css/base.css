@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Базовые стили: сброс, типографика, общие утилиты.
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;            /* Safari: не раздувать текст в ландшафте */
+  text-size-adjust: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;  /* убираем серую вспышку при тапе (iOS/Android) */
+  overscroll-behavior: none;                 /* без «резинки» всей страницы */
+}
+
+h1, h2, h3, p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+img, video, svg { display: block; max-width: 100%; }
+
+button, input, textarea {
+  font: inherit;
+  color: inherit;
+  -webkit-appearance: none;                  /* Safari: убираем нативный вид */
+  appearance: none;
+}
+button { background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
+textarea { resize: none; }
+
+/* Видимый фокус только при навигации с клавиатуры */
+:focus { outline: none; }
+:focus-visible { outline: .125rem solid var(--color-focus); outline-offset: .125rem; }
+
+[hidden] { display: none !important; }
+
+/* Для скринридеров */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Тонкие скроллбары в стиле Aqua */
+.scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;         /* инерционная прокрутка в старых iOS */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;                     /* Firefox */
+  scrollbar-color: var(--aqua-300) transparent;
+}
+.scroll::-webkit-scrollbar { width: .5rem; }
+.scroll::-webkit-scrollbar-thumb { background: var(--aqua-300); border-radius: var(--radius-pill); }
+.scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Слот под SVG-иконку (содержимое спрайта появится на Этапе 3) */
+.icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  fill: none;
+  stroke: var(--aqua-icon);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

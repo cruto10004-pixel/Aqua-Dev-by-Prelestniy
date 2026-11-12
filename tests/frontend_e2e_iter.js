@@ -1,0 +1,27 @@
+const { chromium } = require('playwright'); const { setup } = require('./mock.js');
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+(async () => {
+  const b = await chromium.launch();
+  const { page, errs } = await setup(b, { viewport: { width: 420, height: 820 }, hasTouch: true });
+  await page.addInitScript(() => localStorage.setItem('aqua.token', 'tok'));
+  await page.goto('http://127.0.0.1:8765/index.html'); await page.waitForSelector('#chat-list .chat-item');
+  await page.waitForTimeout(300);
+  ok(await page.locator('#nav').isVisible(), 'нижняя панель видна в списке чатов');
+  await page.click('.chat-item[data-chat-id="1"]'); await page.waitForSelector('#messages .msg'); await page.waitForTimeout(300);
+  ok(!(await page.locator('#nav').isVisible()), 'в чате панель скрыта');
+  const order = await page.evaluate(() => { const m = [...document.querySelectorAll('#messages .msg--out .msg__meta')].pop(); const k = [...m.children].map((c) => c.className); return k; });
+  ok(order[0] && order[0].includes('msg__ticks'), 'галочки слева от времени: ' + JSON.stringify(order));
+  const us = await page.locator('#messages .msg__text').first().evaluate((e) => getComputedStyle(e).userSelect);
+  ok(us === 'none', 'текст без выделения не выделяется');
+  const bb = await page.locator('#messages .msg--in .msg__bubble').last().boundingBox();
+  await page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); const t = () => new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+    el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [t()], targetTouches: [t()], changedTouches: [t()] })); window.__tt = el; }, [bb.x + 20, bb.y + 10]);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__tt.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [] })));
+  await page.waitForSelector('.msg.is-selected'); await page.waitForTimeout(200);
+  await page.screenshot({ path: 'shots/iter-select.png' });
+  await page.evaluate(() => { document.querySelector('#messages').scrollTop = 0; });
+  await page.screenshot({ path: 'shots/iter-chat.png' });
+  ok(errs.length === 0, 'нет ошибок консоли: ' + JSON.stringify(errs));
+  await b.close(); process.exit(fails ? 1 : 0);
+})();

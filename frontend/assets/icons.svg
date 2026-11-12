@@ -1,0 +1,213 @@
+<!-- ==========================================================================
+     Спрайт иконок Aqua — единственный источник правды.
+     Стиль: сетка 24×24, линия 1.75px, скруглённые концы, без заливки.
+     Цвет и толщину задаёт CSS (.icon в base.css): stroke #005A8D, stroke-width 1.75
+     — атрибуты stroke на самих путях не ставим, чтобы иконки перекрашивались.
+     Вставка в index.html:  python3 tools/inline_sprite.py
+     ========================================================================== -->
+<svg xmlns="http://www.w3.org/2000/svg">
+
+  <!-- ===================== Базовые иконки интерфейса ===================== -->
+  <symbol id="i-send" viewBox="0 0 24 24">
+    <!-- Самолётик, смотрит вправо, строго симметричен относительно y=12:
+         нос (22,12), крылья (2.5,3) и (2.5,21), перегиб (8.5,12).
+         Нижняя половина подкрашена (--icon-fill) — даёт объём. -->
+    <path d="M22 12H8.5l-6 9z" style="fill:var(--icon-fill,none);stroke:none"/>
+    <path d="M22 12 2.5 3l6 9-6 9z"/>
+    <path d="M8.5 12H22"/>
+  </symbol>
+
+  <symbol id="i-attach" viewBox="0 0 24 24">
+    <path d="m20.5 11-8.6 8.6a5.2 5.2 0 0 1-7.4-7.4l8.6-8.6a3.5 3.5 0 0 1 5 5l-8.7 8.6a1.8 1.8 0 0 1-2.5-2.5l8-8"/>
+  </symbol>
+
+  <symbol id="i-settings" viewBox="0 0 24 24">
+    <path d="M4 6h9M17 6h3"/><circle cx="15" cy="6" r="2"/>
+    <path d="M4 12h3M11 12h9"/><circle cx="9" cy="12" r="2"/>
+    <path d="M4 18h11M19 18h1"/><circle cx="17" cy="18" r="2"/>
+  </symbol>
+
+  <symbol id="i-search" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="6.5"/>
+    <path d="m20 20-4.4-4.4"/>
+  </symbol>
+
+  <symbol id="i-profile" viewBox="0 0 24 24">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4.5 20.5c.6-3.6 3.6-6 7.5-6s6.9 2.4 7.5 6"/>
+  </symbol>
+
+  <symbol id="i-mic" viewBox="0 0 24 24">
+    <rect x="9" y="3" width="6" height="11" rx="3"/>
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/>
+  </symbol>
+
+  <symbol id="i-smile" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M8.2 14.2c.9 1.5 2.2 2.3 3.8 2.3s2.9-.8 3.8-2.3"/>
+    <path d="M9 9.6h.01M15 9.6h.01" stroke-width="2.4"/>
+  </symbol>
+
+  <symbol id="i-gif" viewBox="0 0 24 24">
+    <rect x="2.5" y="5.5" width="19" height="13" rx="3.5"/>
+    <path d="M10.2 10.4a2.2 2.2 0 1 0 0 3.2v-1.3H8.9M13 9.6v4.8M15.6 14.4V9.6h2.8M15.6 12h2"/>
+  </symbol>
+
+  <symbol id="i-camera" viewBox="0 0 24 24">
+    <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.2l1.3-2h6l1.3 2h1.2A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/>
+    <circle cx="12" cy="12.5" r="3.4"/>
+  </symbol>
+
+  <symbol id="i-logout" viewBox="0 0 24 24">
+    <path d="M10 4.5H6.5A2.5 2.5 0 0 0 4 7v10a2.5 2.5 0 0 0 2.5 2.5H10M15 8l4 4-4 4M19 12H9.5"/>
+  </symbol>
+
+  <symbol id="i-more" viewBox="0 0 24 24">
+    <circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/>
+  </symbol>
+
+  <symbol id="i-chats" viewBox="0 0 24 24">
+    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h8A2.5 2.5 0 0 1 17 6.5v5a2.5 2.5 0 0 1-2.5 2.5H9l-3 2.5V14A2.5 2.5 0 0 1 4 11.5z"/>
+    <path d="M17 9h.5A2.5 2.5 0 0 1 20 11.5v5a2.5 2.5 0 0 1-2 2.45V21l-2.8-2H11a2.5 2.5 0 0 1-2-1"/>
+  </symbol>
+
+  <symbol id="i-contacts" viewBox="0 0 24 24">
+    <circle cx="12" cy="9" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>
+  </symbol>
+
+  <symbol id="i-chevron" viewBox="0 0 24 24">
+    <path d="M9 5.5l6.5 6.5L9 18.5"/>
+  </symbol>
+
+  <symbol id="i-menu" viewBox="0 0 24 24">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+
+  <symbol id="i-close" viewBox="0 0 24 24">
+    <path d="m6 6 12 12M18 6 6 18"/>
+  </symbol>
+
+  <symbol id="i-back" viewBox="0 0 24 24">
+    <path d="M19 12H5M11 6l-6 6 6 6"/>
+  </symbol>
+
+  <!-- Вспомогательные (используются в формах) -->
+  <symbol id="i-eye" viewBox="0 0 24 24">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </symbol>
+
+  <symbol id="i-eye-off" viewBox="0 0 24 24">
+    <path d="M9.9 5.2A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.4 6.5C3.6 8.3 2 12 2 12s3.6 7 10 7c1.7 0 3.2-.4 4.5-1"/>
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+    <path d="m3 3 18 18"/>
+  </symbol>
+
+  <!-- ============ Медиа: файловый менеджер и редактор ============ -->
+  <symbol id="i-folder" viewBox="0 0 24 24">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+  </symbol>
+
+  <symbol id="i-file" viewBox="0 0 24 24">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/>
+    <path d="M14 3v5h5M9 13h6M9 17h6"/>
+  </symbol>
+
+  <symbol id="i-video" viewBox="0 0 24 24">
+    <rect x="3" y="6" width="13" height="12" rx="2.5"/>
+    <path d="m16 10.5 5-3v9l-5-3"/>
+  </symbol>
+
+  <symbol id="i-photo" viewBox="0 0 24 24">
+    <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+    <circle cx="9" cy="10" r="1.8"/>
+    <path d="m21 16-5-5-9 9"/>
+  </symbol>
+
+  <symbol id="i-crop" viewBox="0 0 24 24">
+    <path d="M6 2v14a2 2 0 0 0 2 2h14"/>
+    <path d="M18 22V8a2 2 0 0 0-2-2H2"/>
+  </symbol>
+
+  <symbol id="i-rotate" viewBox="0 0 24 24">
+    <path d="M20 12a8 8 0 1 1-2.5-5.8"/>
+    <path d="M20 4v5h-5"/>
+  </symbol>
+
+  <symbol id="i-brush" viewBox="0 0 24 24">
+    <path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L10.5 16.5 6 18l1.5-4.5 10-10z"/>
+    <path d="M3 21c1.7-1.6 2.8 1.2 4.5 0s2.8 1.2 4.5 0"/>
+  </symbol>
+
+  <symbol id="i-text" viewBox="0 0 24 24">
+    <path d="M5 7V4.5h14V7M12 4.5v15M9 19.5h6"/>
+  </symbol>
+
+  <!-- pathLength="1" — чтобы анимировать «рисование» галочки через stroke-dashoffset -->
+  <symbol id="i-check" viewBox="0 0 24 24">
+    <path d="m5 12.5 4.5 4.5L19 7.5" pathLength="1"/>
+  </symbol>
+
+  <!-- Действия с сообщениями -->
+  <symbol id="i-copy" viewBox="0 0 24 24">
+    <rect x="9" y="9" width="11" height="12" rx="2.5"/>
+    <path d="M5.5 15H5a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2H12a2 2 0 0 1 2 2V6"/>
+  </symbol>
+
+  <symbol id="i-edit" viewBox="0 0 24 24">
+    <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/>
+    <path d="m14.5 7.5 3 3"/>
+  </symbol>
+
+  <symbol id="i-trash" viewBox="0 0 24 24">
+    <path d="M4 7h16M10 3.5h4M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12"/>
+    <path d="M10 11v6M14 11v6"/>
+  </symbol>
+
+  <!-- Плеер голосовых сообщений -->
+  <symbol id="i-play" viewBox="0 0 24 24">
+    <path d="M7 4.5v15a.8.8 0 0 0 1.2.7l12-7.5a.8.8 0 0 0 0-1.4L8.2 3.8A.8.8 0 0 0 7 4.5z"/>
+  </symbol>
+
+  <symbol id="i-pause" viewBox="0 0 24 24">
+    <path d="M8 5v14M16 5v14" stroke-width="2.6"/>
+  </symbol>
+
+  <symbol id="i-sticker" viewBox="0 0 24 24">
+    <path d="M20 12.5V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h5.5zM20 12.5a7.5 7.5 0 0 0-7.5 7.5"/>
+    <path d="M8.5 9.5v.6M14.5 9.5v.6M8.6 13.6c1 1.3 3.3 1.5 4.6.2"/>
+  </symbol>
+
+  <symbol id="i-plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14"/>
+  </symbol>
+
+  <symbol id="i-download" viewBox="0 0 24 24">
+    <path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 19.5h14"/>
+  </symbol>
+
+  <symbol id="i-star" viewBox="0 0 24 24">
+    <path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.95 5.6L12 16.6 6.95 19.2l.95-5.6-4-3.9 5.6-.8z"/>
+  </symbol>
+
+  <symbol id="i-forward" viewBox="0 0 24 24">
+    <path d="m14 5 6 6-6 6M20 11H9a5 5 0 0 0-5 5v2"/>
+  </symbol>
+
+  <symbol id="i-landscape" viewBox="0 0 24 24">
+    <rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M18.4 10.5v3"/>
+  </symbol>
+
+  <symbol id="i-volume-off" viewBox="0 0 24 24">
+    <path d="M4.5 9.5h3L12 6v12l-4.5-3.5h-3zM16 9.5l4 5M20 9.5l-4 5"/>
+  </symbol>
+
+  <symbol id="i-volume" viewBox="0 0 24 24">
+    <path d="M4.5 9.5h3L12 6v12l-4.5-3.5h-3zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>
+  </symbol>
+
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-checks" viewBox="0 0 24 24"><path d="m2.5 12.5 4.5 4.5L16 7.5M10.5 15.8l1.2 1.2L21.5 7.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="m14.5 3.5 6 6-2.2.8-3.3 3.3.4 3.7-1.3 1.3-3.6-3.6L5 20l-1-1 5.8-5.9-3.6-3.6 1.3-1.3 3.7.4 3.3-3.3z"/></symbol>
+</svg>

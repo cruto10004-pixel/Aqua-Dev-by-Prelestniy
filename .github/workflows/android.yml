@@ -1,0 +1,68 @@
+name: Сборка Android APK
+
+# Запуск вручную: вкладка Actions → «Сборка Android APK» → Run workflow.
+# Адрес сервера можно ввести при запуске или один раз задать в Settings → Secrets and variables → Actions → Variables → AQUA_URL.
+on:
+  workflow_dispatch:
+    inputs:
+      aqua_url:
+        description: "Адрес сервера Aqua (https://…up.railway.app)"
+        required: false
+        type: string
+
+permissions:
+  contents: write        # нужно, чтобы выложить APK в раздел Releases
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      AQUA_URL: ${{ inputs.aqua_url || vars.AQUA_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Проверка адреса сервера
+        run: |
+          if [ -z "$AQUA_URL" ]; then echo "::error::Не задан адрес сервера: укажите его при запуске или в переменной AQUA_URL"; exit 1; fi
+
+      - name: Установка зависимостей и создание Android-проекта
+        working-directory: android-app
+        run: |
+          npm install
+          npx cap add android
+
+      - name: Разрешения (микрофон для голосовых) и иконка
+        run: |
+          pip install pillow
+          python3 android-app/prepare_android.py
+
+      - name: Синхронизация и сборка debug-APK
+        working-directory: android-app
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Сохранить APK как артефакт
+        uses: actions/upload-artifact@v4
+        with:
+          name: aqua-debug-apk
+          path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Выложить APK в Releases (скачивать прямо с телефона)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android-app/android/app/build/outputs/apk/debug/app-debug.apk Aqua.apk
+          gh release view apk-latest >/dev/null 2>&1 || gh release create apk-latest --title "Aqua APK" --notes "Последняя сборка Android-приложения. Скачайте Aqua.apk и установите."
+          gh release upload apk-latest Aqua.apk --clobber

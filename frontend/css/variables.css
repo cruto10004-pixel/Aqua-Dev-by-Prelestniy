@@ -1,0 +1,81 @@
+/* ==========================================================================
+   Aqua — дизайн-токены.
+   Палитра взята из логотипа: небесно-голубой фон, тёмно-синяя и бирюзовая волна.
+   ========================================================================== */
+:root {
+  /* --- Цвета бренда (из icon.png) --- */
+  --aqua-sky:   #A2D1FF;   /* фон логотипа */
+  --aqua-navy:  #146CA4;   /* тёмная часть волны */
+  --aqua-teal:  #1290BF;   /* бирюзовая часть волны */
+  --aqua-teal-600: #0F7DA6;/* бирюзовый с контрастом ≥4.5:1 для белого текста */
+  --aqua-icon:  #005A8D;   /* цвет иконок по ТЗ */
+  --aqua-deep:  #0A3A5C;   /* основной текст */
+
+  /* --- Нейтральные оттенки воды --- */
+  --aqua-50:  #F4F9FF;
+  --aqua-100: #E6F2FF;
+  --aqua-200: #CFE6FF;
+  --aqua-300: #B5DAFF;
+
+  /* --- Семантика --- */
+  --color-bg:          var(--aqua-100);
+  --color-surface:     #FFFFFF;
+  --color-surface-alt: var(--aqua-50);
+  --color-border:      #D4E6F7;
+  --color-text:        var(--aqua-deep);
+  --color-text-muted:  #5B7F9A;
+  --color-primary:     var(--aqua-navy);
+  --color-accent:      var(--aqua-teal-600);
+  --color-danger:      #C93C4B;
+  --color-success:     #12896B;
+  --color-focus:       rgba(18, 144, 191, .45);
+
+  --bubble-in-bg:   #FFFFFF;
+  --bubble-in-text: var(--aqua-deep);
+  --bubble-out-bg:  linear-gradient(135deg, var(--aqua-teal-600), var(--aqua-navy));
+  --bubble-out-text:#FFFFFF;
+
+  /* --- Скругления --- */
+  --radius-sm: .5rem;
+  --radius-md: .9rem;
+  --radius-lg: 1.5rem;
+  --radius-pill: 999px;
+
+  /* --- Тени (мягкие, голубоватые — как под логотипом) --- */
+  --shadow-sm: 0 1px 2px rgba(20, 108, 164, .10), 0 2px 6px rgba(20, 108, 164, .08);
+  --shadow-md: 0 4px 14px rgba(20, 108, 164, .16);
+  --shadow-lg: 0 18px 48px rgba(10, 58, 92, .28);
+
+  /* --- Анимации --- */
+  --ease:      cubic-bezier(.2, .8, .2, 1);
+  --ease-back: cubic-bezier(.34, 1.56, .64, 1);
+  --dur-fast: .15s;
+  --dur:      .25s;
+  --dur-slow: .4s;
+
+  /* --- Типографика --- */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-xs: .75rem;
+  --fs-sm: .875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.75rem;
+
+  /* --- Размеры раскладки (относительные единицы) --- */
+  --sidebar-w: clamp(18rem, 28vw, 24rem);
+  --header-h: 3.75rem;
+  --tap-size: 2.75rem;                 /* минимальная цель касания ≈44px */
+  --content-max: 46rem;                /* ширина колонки сообщений на больших экранах */
+
+  /* --- Безопасные зоны (вырезы iPhone) --- */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+
+  --z-sidebar: 1;
+  --z-chat: 2;
+  --z-menu: 50;
+  --z-modal: 100;
+  --z-splash: 1000;
+}

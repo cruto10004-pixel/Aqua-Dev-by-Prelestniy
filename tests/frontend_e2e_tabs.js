@@ -1,0 +1,21 @@
+const { chromium } = require('playwright'); const { setup } = require('./mock.js');
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+(async () => {
+  const b = await chromium.launch();
+  const { page, errs } = await setup(b, { viewport: { width: 420, height: 820 }, hasTouch: true });
+  await page.addInitScript(() => localStorage.setItem('aqua.token', 'tok'));
+  await page.goto('http://127.0.0.1:8765/index.html'); await page.waitForSelector('#chat-list .chat-item'); await page.waitForTimeout(300);
+  await page.click('#nav-settings'); await page.waitForTimeout(300);
+  ok(await page.locator('#modal-prefs').evaluate((e) => e.classList.contains('is-open')), 'настройки открыты как страница');
+  ok(!(await page.locator('#modal-prefs [data-close-modal]').first().isVisible()), 'у вкладки нет крестика');
+  ok(!(await page.locator('#btn-new-channel').isVisible()), 'карандаш скрыт на странице');
+  await page.click('#nav-contacts'); await page.waitForTimeout(300);
+  const open = await page.evaluate(() => [...document.querySelectorAll('.modal.is-open')].map((m) => m.id));
+  ok(JSON.stringify(open) === '["modal-contacts"]', 'переключение вкладкой: открыта только новая: ' + JSON.stringify(open));
+  ok(await page.locator('#nav').isVisible(), 'панель видна поверх страницы вкладки');
+  await page.click('#nav-chats'); await page.waitForTimeout(300);
+  ok(!(await page.evaluate(() => document.body.classList.contains('has-modal'))), 'в чатах страницы закрыты');
+  ok(errs.length === 0, 'нет ошибок консоли: ' + JSON.stringify(errs));
+  await page.click('#nav-settings'); await page.waitForTimeout(400); await page.screenshot({ path: 'shots/tab-settings.png' });
+  await b.close(); process.exit(fails ? 1 : 0);
+})();
