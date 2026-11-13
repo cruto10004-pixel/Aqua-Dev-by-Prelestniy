@@ -8,6 +8,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   // --- Восстановление пароля (с экрана входа) ---
   {
     const { page, be, errs } = await setup(b, { viewport: { width: 420, height: 820 } });
+    await page.route('https://t.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<p>bot</p>' }));
     await page.goto('http://127.0.0.1:8765/index.html');
     await page.waitForSelector('#form-login:not([hidden])');
     await page.click('#to-recover');
@@ -15,8 +16,11 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
     ok(await page.locator('#recover-username').isVisible() && await page.locator('#recover-email').count() === 0, 'восстановление: спрашивает логин, без почты');
     await page.fill('#recover-username', 'newbie');
     await page.click('#form-recover button[type=submit]');
+    await page.waitForURL(/t\.me\/aqua_test_bot\?start=x_x1/);
+    ok(true, 'восстановление: автоматический переход в бота по ссылке x_');
+    await page.goto('http://127.0.0.1:8765/index.html');
     await page.waitForSelector('#view-code:not([hidden])');
-    ok((await page.getAttribute('#code-bot', 'href')).includes('start=x_x1'), 'восстановление: ссылка на бота с x_ при коде');
+    ok((await page.getAttribute('#code-bot', 'href')).includes('start=x_x1'), 'восстановление: при возврате открыта страница кода');
     ok(await page.locator('#code-resend').count() === 0, 'кнопки повторной отправки нет (код только через бота)');
     await page.locator('.code-box').nth(0).click();
     await page.keyboard.type('123456');
@@ -33,6 +37,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   // --- Регистрация ---
   {
     const { page, be, errs } = await setup(b, { viewport: { width: 420, height: 820 } });
+    await page.route('https://t.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<p>bot</p>' }));
     await page.goto('http://127.0.0.1:8765/index.html');
     await page.waitForSelector('#form-login:not([hidden])');
     ok(await page.locator('#login-username').isVisible() && await page.locator('#login-password').isVisible(), 'вход: логин и пароль');
@@ -56,8 +61,11 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
     // Нормальный запрос: страница кода со ссылкой на бота и 6 ячейками
     be.codeMode = 'ok';
     await page.click('#reg-submit');
+    await page.waitForURL(/t\.me\/aqua_test_bot\?start=r_r1/);
+    ok(true, 'регистрация: автоматический переход в бота по ссылке r_');
+    await page.goto('http://127.0.0.1:8765/index.html');
     await page.waitForSelector('#view-code:not([hidden])');
-    ok((await page.getAttribute('#code-bot', 'href')).includes('start=r_r1'), 'ссылка на бота с r_ открыта на странице кода');
+    ok((await page.getAttribute('#code-bot', 'href')).includes('start=r_r1'), 'регистрация: при возврате открыта страница кода');
     ok(await page.locator('.code-box').count() === 6 && await page.locator('.code-box').first().isVisible(), '6 ячеек кода видны');
     ok(await page.locator('#code-submit').isDisabled(), 'без кода «Подтвердить» неактивна');
 

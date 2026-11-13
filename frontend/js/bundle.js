@@ -622,6 +622,13 @@ __m["ui/auth-view.js"] = (function () {
 
 
 const PASSWORD_HINT = 'Пароль: от 8 символов, строчная латинская буква и цифра.';
+// Незавершённая попытка (регистрация или восстановление) хранится, пока человек в боте.
+const PENDING_KEY = 'aqua.tgPending';
+function savePending(p) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch { /* приватный режим */ } }
+function loadPending() { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch { return null; } }
+function clearPending() { try { localStorage.removeItem(PENDING_KEY); } catch { /* ignore */ } }
+/** Переводит в Telegram-бота по ссылке с ref. */
+function goToBot(link) { window.location.href = link; }
 function showFormError(node, message) {
   node.textContent = message || '';
   node.hidden = !message;
@@ -794,6 +801,30 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     goTo(viewCode, { onShown: () => codeBoxes[0].focus() });
   }
 
+  /** Продолжает незавершённую попытку: открывает страницу кода для регистрации или восстановления. */
+  function runCodeFlow(p) {
+    if (p.kind === 'register') {
+      openCodePage({
+        title: 'Подтверждение',
+        sent: 'Код пришёл в Telegram-бота. Введите его здесь. Он действует 15 минут.',
+        link: p.link,
+        onDone: async (code) => { await onRegister({ ref: p.ref, code }); clearPending(); },
+      });
+    } else {
+      openCodePage({
+        title: 'Восстановление пароля',
+        sent: 'Код пришёл в Telegram-бота, привязанного к аккаунту. Введите его здесь.',
+        link: p.link,
+        onDone: async (code) => {
+          resetRef = p.ref; resetCode = code;
+          $('#newpass-password').value = '';
+          showFormError($('#newpass-error'), '');
+          goTo(viewNewpass, { onShown: () => $('#newpass-password').focus({ preventScroll: true }) });
+        },
+      });
+    }
+  }
+
   async function submitCode() {
     if (codeSubmit.disabled || !codeCtx) return;
     const code = codeValue();
@@ -812,6 +843,7 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
 
   function backFromCode() {
     codeCtx = null;
+    clearPending();
     goTo(viewAuth, { onShown: () => (tabs.dataset.active === 'login' ? lUser : rUser).focus({ preventScroll: true }) });
   }
   $('#code-back').addEventListener('click', backFromCode);
@@ -850,12 +882,8 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     setBusy(regBtn, true);
     try {
       const { ref, link } = await onSendCode(d);
-      openCodePage({
-        title: 'Подтверждение',
-        sent: 'Откройте бота и нажмите Start. Код придёт в Telegram и действует 15 минут.',
-        link,
-        onDone: (code) => onRegister({ ref, code }),
-      });
+      savePending({ kind: 'register', ref, link });
+      goToBot(link);
     } catch (e2) {
       const f = e2.fields || {};
       if (f.username_errors?.length) setFieldError(rUser, f.username_errors[0]);
@@ -868,7 +896,7 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
   // ---------------------------------------------------------------------
   // Восстановление пароля: логин → ссылка на бота → код → новый пароль.
   const recoverForm = $('#form-recover'), recoverUser = $('#recover-username');
-  let resetRef = '', resetCode = '';
+  let resetRef = '', resetCode = '';  // resetRef задаётся в runCodeFlow / recoverForm
 
   $('#to-recover').addEventListener('click', () => {
     showFormError($('#recover-error'), '');
@@ -888,18 +916,8 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     setBusy(btn, true);
     try {
       const { ref, link } = await onResetCode(username);
-      resetRef = ref;
-      openCodePage({
-        title: 'Восстановление пароля',
-        sent: 'Откройте бота и нажмите Start. Код придёт в Telegram, привязанный к аккаунту.',
-        link,
-        onDone: async (code) => {
-          resetCode = code;
-          $('#newpass-password').value = '';
-          showFormError($('#newpass-error'), '');
-          goTo(viewNewpass, { onShown: () => $('#newpass-password').focus({ preventScroll: true }) });
-        },
-      });
+      savePending({ kind: 'reset', ref, link });
+      goToBot(link);
     } catch (e2) { showFormError(err, e2.message); shake(recoverForm); haptic.error(); }
     finally { setBusy(btn, false); }
   });
@@ -915,7 +933,7 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     if (pErr) { shake(newpassForm); haptic.error(); return; }
     const btn = newpassForm.querySelector('button[type="submit"]');
     setBusy(btn, true);
-    try { await onResetPassword({ ref: resetRef, code: resetCode, password: newpassInput.value }); haptic.success(); }
+    try { await onResetPassword({ ref: resetRef, code: resetCode, password: newpassInput.value }); clearPending(); haptic.success(); }
     catch (e2) {
       // Код проверяется на сервере только здесь: при ошибке (неверный или истёкший код) ведём на ввод кода.
       clearCode();
@@ -924,6 +942,10 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     }
     finally { setBusy(btn, false); }
   });
+
+  // Вернулись из бота: продолжаем с кода, который уже выслан.
+  const pending = loadPending();
+  if (pending && (pending.kind === 'register' || pending.kind === 'reset')) runCodeFlow(pending);
 
   return {
     reset() {
