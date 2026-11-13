@@ -59,6 +59,7 @@ def health():
 
 app.include_router(auth.router)
 app.include_router(email_auth.router)
+app.include_router(email_auth.reset_router)
 app.include_router(chats.router)
 app.include_router(media.router)
 app.include_router(reactions.router)

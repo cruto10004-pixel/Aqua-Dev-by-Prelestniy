@@ -57,6 +57,8 @@ export const api = {
   login:        (username, password) => request('/auth/login', { method: 'POST', json: { username, password }, auth: false }),
   registerCode: (d) => request('/auth/register/code', { method: 'POST', json: d, auth: false }),
   register:     (d) => request('/auth/register', { method: 'POST', json: d, auth: false }),
+  resetCode:    (email) => request('/auth/reset/code', { method: 'POST', json: { email }, auth: false }),
+  resetPassword: (d) => request('/auth/reset', { method: 'POST', json: d, auth: false }),
   me:       () => request('/auth/me'),
   searchUsers: (q) => request(`/users/search?q=${encodeURIComponent(q)}`),
   listChats: () => request('/chats'),

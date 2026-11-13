@@ -107,6 +107,8 @@ const authView = initAuthView({
   onLogin: (username, password) => authenticate(api.login(username, password)),
   onSendCode: (d) => api.registerCode(d),
   onRegister: (d) => authenticate(api.register(d)),
+  onResetCode: (email) => api.resetCode(email),
+  onResetPassword: (d) => authenticate(api.resetPassword(d)),
 });
 
 async function enterApp(user) {
