@@ -385,3 +385,47 @@ body {
 
 /* Плитки профиля крупнее скругление */
 .profile__tile { border-radius: var(--radius-lg); }
+
+/* ==========================================================================
+   Заметнее на светлой теме: сильнее свечение фона, плитки чатов с тенью,
+   выразительные градиентные кнопки и нижняя панель.
+   ========================================================================== */
+body {
+  background:
+    radial-gradient(70rem 46rem at 0% -12%, color-mix(in srgb, var(--aqua-teal) 34%, transparent), transparent 60%),
+    radial-gradient(56rem 40rem at 108% 108%, color-mix(in srgb, var(--aqua-navy) 30%, transparent), transparent 62%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+
+.chat-item {
+  width: calc(100% - 1.2rem);
+  margin: .4rem .6rem;
+  padding: .7rem .8rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.chat-item:hover { box-shadow: var(--shadow-md); }
+.chat-item.is-active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--aqua-teal) 22%, #fff), color-mix(in srgb, var(--aqua-navy) 16%, #fff));
+}
+
+.btn--primary {
+  background: var(--grad-primary);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--aqua-navy) 28%, transparent);
+}
+
+.nav {
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--aqua-navy) 22%, transparent);
+}
+
+.profile__info,
+.profile__tile {
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--aqua-navy) 12%, transparent);
+}
+
+.settings-section__title,
+.section-title {
+  color: var(--aqua-navy);
+  font-weight: 600;
+}
