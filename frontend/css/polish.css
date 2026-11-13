@@ -348,3 +348,40 @@ body {
   .picker__emoji,
   .picker__sticker { animation: none; }
 }
+
+/* ==========================================================================
+   Визуальный ориентир — тёмный «аквариум» из референса: мягкое свечение фона,
+   плавающие карточки чатов, выразительные активные состояния. Только токены,
+   поэтому все палитры (включая ночную) получают то же оформление.
+   ========================================================================== */
+body {
+  background:
+    radial-gradient(60rem 40rem at 0% -10%, color-mix(in srgb, var(--aqua-teal) 20%, transparent), transparent 60%),
+    radial-gradient(50rem 36rem at 105% 105%, color-mix(in srgb, var(--aqua-navy) 18%, transparent), transparent 62%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+
+/* Список чатов: строки-карточки с отступом и мягким выделением */
+.chat-item { margin: .15rem .5rem; }
+.chat-item:hover { background: color-mix(in srgb, var(--aqua-teal) 10%, var(--color-surface)); }
+.chat-item.is-active {
+  background: color-mix(in srgb, var(--aqua-teal) 18%, var(--color-surface));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--aqua-navy) 14%, transparent);
+}
+
+/* Вкладки стикеров и эмодзи: активная — заливка градиентом, как в референсе */
+.picker__tab.is-active,
+.picker__tab[aria-selected="true"] {
+  background: var(--grad-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--aqua-navy) 30%, transparent);
+}
+
+/* Профиль: аватар с тонким светящимся кольцом */
+.profile__avatar .avatar {
+  box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px color-mix(in srgb, var(--aqua-teal) 55%, transparent);
+}
+
+/* Плитки профиля крупнее скругление */
+.profile__tile { border-radius: var(--radius-lg); }
