@@ -1022,10 +1022,54 @@ button.msg__author { padding: 0; border: 0; background: none; font: inherit; fon
 #modal-editor.modal--editor { z-index: 1000; }
 
 /* Экран входа по почте */
-.auth__hint { margin: 0 0 1rem; text-align: center; color: var(--color-text-muted); font-size: var(--fs-sm, .9rem); line-height: 1.4; word-break: break-word; }
+.auth__hint { margin: 0 0 1rem; text-align: center; color: rgba(255,255,255,.5); font-size: var(--fs-sm, .9rem); line-height: 1.4; word-break: break-word; }
 .auth__row { display: flex; gap: .6rem; margin-top: .8rem; }
 .auth__row .btn { flex: 1; min-width: 0; padding-inline: .5rem; font-size: .9rem; }
 .input--code { text-align: center; font-size: 1.6rem; letter-spacing: .5em; padding-left: .5em; font-variant-numeric: tabular-nums; }
 #form-email, #form-code, #form-name { display: flex; flex-direction: column; gap: .9rem; }
 #form-email[hidden], #form-code[hidden], #form-name[hidden] { display: none; }
 #form-code .field, #form-name .field, #form-email .field { margin: 0; }
+
+/* ---------- Тёмные переопределения для auth-карточки ---------- */
+.auth__card .field__label { color: rgba(255,255,255,.75); }
+.auth__card .input {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.14);
+  color: #fff;
+}
+.auth__card .input::placeholder { color: rgba(255,255,255,.35); opacity: 1; }
+.auth__card .input:focus {
+  background: rgba(255,255,255,.12);
+  border-color: var(--aqua-teal);
+  box-shadow: 0 0 0 3px rgba(18,144,191,.25);
+}
+.auth__card .field--error .input { border-color: var(--color-danger); }
+.auth__card .tabs {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+}
+.auth__card .tabs__tab { color: rgba(255,255,255,.45); }
+.auth__card .tabs__tab[aria-selected="true"] { color: #fff; }
+.auth__card .tabs__thumb { background: rgba(255,255,255,.14); box-shadow: none; }
+.auth__card .btn--ghost {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.85);
+}
+.auth__card .btn--ghost:hover { background: rgba(255,255,255,.14); }
+.auth__card .auth__link,
+.auth__cancel { color: var(--aqua-teal); }
+.auth__card .auth__back .icon { stroke: rgba(255,255,255,.75); }
+.auth__card .auth__view-title { color: #fff; }
+.auth__card .form-error { background: rgba(201,60,75,.15); }
+.auth__card .field__error { color: #f47f8a; }
+.auth__card .code-box {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.14);
+  color: #fff;
+}
+.auth__card .code-box:focus { border-color: var(--aqua-teal); box-shadow: 0 0 0 3px rgba(18,144,191,.25); }
+.auth__card .code-box.is-filled { border-color: var(--aqua-teal); background: rgba(18,144,191,.18); }
+.auth__card .auth__back:hover { background: rgba(255,255,255,.1); }
+/* Ссылка «Вернуться в прежний аккаунт» под карточкой */
+.auth > .auth__cancel { color: var(--aqua-teal); }

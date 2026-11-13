@@ -27,29 +27,32 @@
   min-height: 100%;
   display: grid;
   place-items: center;
-  padding: max(1rem, var(--safe-top)) max(1rem, var(--safe-right))
-           max(1rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+  padding: max(1.5rem, var(--safe-top)) max(1rem, var(--safe-right))
+           max(2rem, var(--safe-bottom)) max(1rem, var(--safe-left));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background:
-    radial-gradient(60rem 30rem at 85% -10%, rgba(18, 144, 191, .28), transparent 60%),
-    radial-gradient(50rem 28rem at -10% 110%, rgba(20, 108, 164, .22), transparent 60%),
-    linear-gradient(180deg, var(--aqua-sky) 0%, var(--aqua-100) 100%);
+    radial-gradient(ellipse 70% 45% at 80% 5%, rgba(18,144,191,.35) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 40% at 15% 95%, rgba(20,108,164,.28) 0%, transparent 65%),
+    linear-gradient(170deg, #0D2235 0%, #0A1A2E 55%, #071525 100%);
 }
 .auth__card {
   width: min(100%, 26rem);
-  padding: clamp(1.25rem, 5vw, 2.25rem);
-  background: var(--color-surface);
+  padding: clamp(1.5rem, 6vw, 2.5rem);
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.10);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 24px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(18,144,191,.08) inset;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .auth__brand {
   display: flex; flex-direction: column; align-items: center;
-  gap: .5rem; margin-bottom: 1.5rem; text-align: center;
+  gap: .5rem; margin-bottom: 1.75rem; text-align: center;
 }
-.auth__logo { width: 5rem; height: 5rem; border-radius: 1.25rem; box-shadow: var(--shadow-md); }
-.auth__title { font-size: var(--fs-xl); font-weight: 700; color: var(--color-primary); letter-spacing: .02em; }
-.auth__subtitle { color: var(--color-text-muted); font-size: var(--fs-sm); }
+.auth__logo { width: 5rem; height: 5rem; border-radius: 1.25rem; box-shadow: 0 4px 20px rgba(18,144,191,.4); }
+.auth__title { font-size: var(--fs-xl); font-weight: 700; color: #fff; letter-spacing: .02em; }
+.auth__subtitle { color: rgba(255,255,255,.5); font-size: var(--fs-sm); }
 
 /* ---------- Мессенджер ---------- */
 .messenger {
