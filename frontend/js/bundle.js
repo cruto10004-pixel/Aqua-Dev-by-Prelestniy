@@ -833,7 +833,9 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
   function openCodePage({ title, email, onDone, resend, cooldown }) {
     codeCtx = { onDone };
     codeTitle.textContent = title;
-    codeSent.textContent = `Код отправлен на ${maskEmail(email)}. Он действует 10 минут.`;
+    codeSent.textContent = email.startsWith('@')
+      ? `Код отправлен в Telegram ${email}. Он действует 10 минут.`
+      : `Код отправлен на ${maskEmail(email)}. Он действует 10 минут.`;
     clearCode();
     showFormError(codeError, '');
     goTo(viewCode, { onShown: () => codeBoxes[0].focus() });
@@ -883,7 +885,7 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
   rPass.addEventListener('input', () => setFieldError(rPass, rPass.value && !isPasswordValid(rPass.value)
     ? 'Пароль: от 8 символов, строчная латинская буква и цифра.' : ''));
 
-  // Регистрация: логин + почта + пароль → страница кода → создание аккаунта.
+  // Регистрация: логин + Telegram-ник + пароль → страница кода (код в бот) → создание аккаунта.
   const regData = () => ({ username: rUser.value.trim(), password: rPass.value, email: rMail.value.trim().toLowerCase() });
   const regBtn = $('#reg-submit');
   regForm.addEventListener('submit', async (e) => {
@@ -892,14 +894,14 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     const d = regData();
     const uErr = usernameError(d.username);
     const pErr = isPasswordValid(d.password) ? '' : 'Пароль: от 8 символов, строчная латинская буква и цифра.';
-    const mErr = EMAIL_RE.test(d.email) ? '' : 'Введите корректный адрес почты.';
+    const mErr = /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/.test(d.email) ? '' : 'Введите Telegram-ник, например @name.';
     setFieldError(rUser, uErr); setFieldError(rPass, pErr); setFieldError(rMail, mErr);
     if (uErr || pErr || mErr) { shake(regForm); haptic.error(); return; }
     setBusy(regBtn, true);
     try {
       const cooldown = await requestCode(() => onSendCode(d));
       openCodePage({
-        title: 'Подтверждение почты',
+        title: 'Подтверждение',
         email: d.email,
         cooldown,
         resend: () => onSendCode(regData()),

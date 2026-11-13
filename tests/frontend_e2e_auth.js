@@ -11,13 +11,13 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await page.locator('#login-username').isVisible() && await page.locator('#login-password').isVisible(), 'вход: логин и пароль');
   await page.click('#tab-register');
   await page.waitForSelector('#form-register:not([hidden])');
-  ok(await page.locator('#reg-username').isVisible() && await page.locator('#reg-password').isVisible() && await page.locator('#reg-email').isVisible(), 'регистрация: логин, пароль, почта');
+  ok(await page.locator('#reg-username').isVisible() && await page.locator('#reg-password').isVisible() && await page.locator('#reg-email').isVisible(), 'регистрация: логин, пароль, Telegram-ник');
 
   await page.fill('#reg-username', 'bad name!'); await page.fill('#reg-password', 'short'); await page.fill('#reg-email', 'nope');
   await page.click('#reg-submit');
   ok(!be.reqs.includes('POST /auth/register/code'), 'невалидные поля не уходят на сервер');
 
-  await page.fill('#reg-username', 'newbie'); await page.fill('#reg-password', 'secret123'); await page.fill('#reg-email', 'New@Example.org');
+  await page.fill('#reg-username', 'newbie'); await page.fill('#reg-password', 'secret123'); await page.fill('#reg-email', '@newbie_tg');
 
   // Письмо не ушло: остаёмся на форме, видна ошибка, кнопка снова доступна (не зависает на «Подождите…»)
   be.codeMode = 'fail';

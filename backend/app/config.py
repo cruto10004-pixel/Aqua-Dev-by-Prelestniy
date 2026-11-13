@@ -141,6 +141,11 @@ SMTP_USER = os.getenv("AQUA_SMTP_USER", "").strip()
 SMTP_PASSWORD = os.getenv("AQUA_SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("AQUA_SMTP_FROM", "").strip() or SMTP_USER
 EMAIL_DEV = os.getenv("AQUA_EMAIL_DEV", "") == "1"
+# Telegram-бот: регистрация по нику. Код приходит в чат с ботом (пользователь сначала нажимает Start).
+# AQUA_TG_BOT_USERNAME — без @, например: aqua_codes_bot. AQUA_TG_POLLING=0 отключает опрос обновлений.
+TG_BOT_TOKEN = os.getenv("AQUA_TG_BOT_TOKEN", "").strip()
+TG_BOT_USERNAME = os.getenv("AQUA_TG_BOT_USERNAME", "").strip().lstrip("@")
+TG_POLLING = os.getenv("AQUA_TG_POLLING", "1") != "0"
 EMAIL_CODE_TTL_SEC = 600          # код живёт 10 минут
 EMAIL_CODE_COOLDOWN_SEC = 30      # повторно можно запросить через 30 секунд
 EMAIL_CODE_MAX_TRIES = 5          # после 5 неверных вводов код сгорает

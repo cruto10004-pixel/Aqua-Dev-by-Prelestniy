@@ -234,6 +234,11 @@ def init_db(path: Path = DB_PATH) -> None:
         ecols = {r["name"] for r in conn.execute("PRAGMA table_info(email_codes)")}
         if "purpose" not in ecols:
             conn.execute("ALTER TABLE email_codes ADD COLUMN purpose TEXT NOT NULL DEFAULT 'register'")
+        # Telegram-бот: ник → chat_id, чтобы слать код в чат (бот получает chat_id из обновлений)
+        conn.execute("""CREATE TABLE IF NOT EXISTS tg_chats (
+            username    TEXT    PRIMARY KEY COLLATE NOCASE,
+            chat_id     INTEGER NOT NULL,
+            updated_at  REAL    NOT NULL)""")
         # Блок 4: пересланные, закреплённое сообщение, прочитанность
         if "fwd" not in cols:
             conn.execute("ALTER TABLE messages ADD COLUMN fwd TEXT")

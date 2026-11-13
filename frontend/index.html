@@ -230,7 +230,7 @@
           <button class="auth__link" type="button" id="to-recover">Забыли пароль?</button>
         </form>
 
-        <!-- Регистрация: логин, почта, пароль — код из письма вводится на отдельной странице -->
+        <!-- Регистрация: логин, Telegram-ник, пароль — код приходит в Telegram-бот, вводится на отдельной странице -->
         <form id="form-register" novalidate hidden>
           <div class="form-error" id="reg-error" role="alert" hidden></div>
           <div class="field">
@@ -240,10 +240,11 @@
             <p class="field__error" id="reg-username-error"></p>
           </div>
           <div class="field">
-            <label class="field__label" for="reg-email">Почта</label>
-            <input class="input" id="reg-email" name="email" type="email" autocomplete="email" inputmode="email"
+            <label class="field__label" for="reg-email">Telegram-ник</label>
+            <input class="input" id="reg-email" name="email" type="text" autocomplete="off" placeholder="@ник"
                    autocapitalize="none" autocorrect="off" spellcheck="false" required>
             <p class="field__error" id="reg-email-error"></p>
+            <p class="auth__hint">Сначала откройте бота и нажмите Start — код придёт туда.</p>
           </div>
           <div class="field">
             <label class="field__label" for="reg-password">Пароль</label>

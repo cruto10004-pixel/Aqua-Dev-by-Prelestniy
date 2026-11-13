@@ -13,13 +13,14 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .database import init_db
-from . import email_auth
+from . import email_auth, tg
 from .routers import auth, chats, contacts, gifs, media, message_ops, profile, reactions, stickers, ws
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()          # создаём таблицы при старте
+    tg.start_polling()  # приём /start от бота (для регистрации по Telegram-нику)
     log = logging.getLogger("uvicorn.error")
     log.info("Aqua: данные в %s (база: %s)", config.DATA_DIR, config.DB_PATH)
     if not config.DATA_PERSISTENT and (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID")):

@@ -13,7 +13,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from . import config
+from . import config, tg
 from .deps import get_db
 from .mail import mail_ready, send_login_code
 from .security import create_token, hash_password
@@ -35,13 +35,32 @@ def _norm_email(raw: str) -> str:
     return email
 
 
+TG_RE = re.compile(r"^@?([A-Za-z][A-Za-z0-9_]{4,31})$")
+
+
+def _norm_tg(raw: str) -> str:
+    """Telegram-ник в виде «@name» (5–32 символа, латиница, цифры и _)."""
+    m = TG_RE.match((raw or "").strip())
+    if not m:
+        raise HTTPException(422, "Введите Telegram-ник, например @name.")
+    return "@" + m.group(1).lower()
+
+
 def _code_hash(email: str, code: str) -> str:
     return hmac.new(config.SECRET_KEY.encode(), f"{email}|{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def _send_code(conn: sqlite3.Connection, email: str, purpose: str) -> dict:
-    """Общая отправка одноразового кода: лимит частоты, HMAC-хранение, письмо."""
-    if not mail_ready():
+    """Общая отправка одноразового кода: лимит частоты, HMAC-хранение, доставка.
+    Контакт «@name» — код уходит в Telegram-бот, иначе — на почту (восстановление пароля)."""
+    to_chat = None
+    if email.startswith("@"):
+        if not tg.enabled():
+            raise HTTPException(503, "Сейчас это недоступно: Telegram-бот не настроен.")
+        to_chat = tg.chat_id_for(conn, email)
+        if to_chat is None:
+            raise HTTPException(422, detail=f"Откройте бота @{config.TG_BOT_USERNAME}, нажмите Start и повторите.")
+    elif not mail_ready():
         raise HTTPException(503, "Сейчас это недоступно: почта не настроена.")
     now = time.time()
     last = conn.execute(
@@ -57,7 +76,10 @@ def _send_code(conn: sqlite3.Connection, email: str, purpose: str) -> dict:
     new_id = cur.lastrowid
     conn.commit()
     try:
-        send_login_code(email, code, purpose=purpose)
+        if to_chat is not None:
+            tg.send_code(to_chat, code)
+        else:
+            send_login_code(email, code, purpose=purpose)
     except Exception as e:
         # Письмо не ушло — код удаляем целиком: иначе он запустит кулдаун и пользователь будет ждать зря.
         conn.execute("DELETE FROM email_codes WHERE id = ?", (new_id,))
@@ -98,16 +120,17 @@ class RegisterFinish(RegisterStart):
 
 
 def _check_fields(conn: sqlite3.Connection, data: RegisterStart) -> tuple[str, str]:
+    """data.email здесь — Telegram-ник (поле оставлено прежним для совместимости API)."""
     username = data.username.strip()
-    email = _norm_email(data.email)
+    contact = _norm_tg(data.email)
     u_err, p_err = validate_username(username), validate_password(data.password)
     if u_err or p_err:
         raise HTTPException(422, detail={"message": "Проверьте введённые данные.", "username_errors": u_err, "password_errors": p_err})
     if conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone():
         raise HTTPException(409, "Это имя пользователя уже занято.")
-    if conn.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
-        raise HTTPException(409, "Эта почта уже используется.")
-    return username, email
+    if conn.execute("SELECT 1 FROM users WHERE email = ?", (contact,)).fetchone():
+        raise HTTPException(409, "Этот Telegram-ник уже привязан к аккаунту.")
+    return username, contact
 
 
 @router.post("/code")
