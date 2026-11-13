@@ -58,7 +58,8 @@ def _subject_and_text(code: str, purpose: str) -> tuple[str, str]:
 def _post_json(url: str, headers: dict, payload: dict, provider: str) -> None:
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode(), method="POST",
-        headers={"Content-Type": "application/json", "Accept": "application/json", **headers})
+        # Свой User-Agent: по умолчанию urllib шлёт «Python-urllib/…», и Cloudflare (Resend) блокирует его (HTTP 403, error 1010)
+        headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "Aqua/1.0", **headers})
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             if resp.status >= 300:
