@@ -39,6 +39,14 @@ pytest -q                              # тесты
 Переменные окружения: `AQUA_SECRET_KEY`, `AQUA_DATA_DIR`, `AQUA_DB_PATH`,
 `AQUA_JWT_TTL_HOURS`, `AQUA_MAX_UPLOAD_MB`, `AQUA_CORS_ORIGINS`.
 
+Почта (код при регистрации и восстановлении пароля): по умолчанию через
+[Resend](https://resend.com) — `AQUA_RESEND_API_KEY` (ключ из кабинета Resend) и
+`AQUA_RESEND_FROM` (например, `Aqua <noreply@ваш-домен.ru>`; без верифицированного
+домена подойдёт `onboarding@resend.dev` — используется, если переменная не задана).
+Если ключ Resend не задан, бэкенд сам переключается на обычный SMTP:
+`AQUA_SMTP_HOST`, `AQUA_SMTP_PORT`, `AQUA_SMTP_USER`, `AQUA_SMTP_PASSWORD`, `AQUA_SMTP_FROM`.
+Без того и другого — только `AQUA_EMAIL_DEV=1` для локальной разработки (код печатается в лог, а не отправляется).
+
 ## База данных
 
 | Таблица | Поля | Назначение |

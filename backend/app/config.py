@@ -126,8 +126,11 @@ CONTENT_SECURITY_POLICY = (
 
 
 # --- Вход/регистрация по коду из письма ----------------------------------------
-# SMTP задаётся переменными окружения. Без SMTP письма не уходят: в проде коды не
+# Письма шлём через Resend API (приоритетно) либо через обычный SMTP — задаются
+# переменными окружения. Без того и другого письма не уходят: в проде коды не
 # пишутся в лог; локально можно включить AQUA_EMAIL_DEV=1 — тогда код печатается в консоль.
+RESEND_API_KEY = os.getenv("AQUA_RESEND_API_KEY", "").strip()
+RESEND_FROM = os.getenv("AQUA_RESEND_FROM", "").strip()        # например: "Aqua <noreply@your-domain.com>"
 SMTP_HOST = os.getenv("AQUA_SMTP_HOST", "").strip()
 SMTP_PORT = int(os.getenv("AQUA_SMTP_PORT", "587"))
 SMTP_USER = os.getenv("AQUA_SMTP_USER", "").strip()
