@@ -23,7 +23,7 @@ def main() -> None:
         return
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    legacy = [r["id"] for r in conn.execute("SELECT id FROM users WHERE email IS NULL OR email = ''")]
+    legacy = [r["id"] for r in conn.execute("SELECT id FROM users WHERE tg_chat_id IS NULL")]
     print(f"Старых аккаунтов без почты: {len(legacy)}")
     if not legacy:
         return

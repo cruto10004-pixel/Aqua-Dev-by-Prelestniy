@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .database import init_db
-from . import email_auth, tg
+from . import tg, tg_auth
 from .routers import auth, chats, contacts, gifs, media, message_ops, profile, reactions, stickers, ws
 
 
@@ -59,8 +59,8 @@ def health():
 
 
 app.include_router(auth.router)
-app.include_router(email_auth.router)
-app.include_router(email_auth.reset_router)
+app.include_router(tg_auth.router)
+app.include_router(tg_auth.reset_router)
 app.include_router(chats.router)
 app.include_router(media.router)
 app.include_router(reactions.router)

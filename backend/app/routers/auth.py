@@ -1,4 +1,4 @@
-"""Вход по логину и паролю. Регистрация с кодом из письма — в email_auth.py."""
+"""Вход по логину и паролю. Регистрация и восстановление — через Telegram-бота (tg_auth.py)."""
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Request

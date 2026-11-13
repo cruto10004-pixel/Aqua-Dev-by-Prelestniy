@@ -1,13 +1,11 @@
 /* Экран входа и регистрации.
-   Вход: логин + пароль (плюс восстановление через почту). Регистрация: логин + почта + пароль,
-   затем отдельная страница с кодом из письма (почта нужна, чтобы код отправить). */
+   Вход: логин + пароль. Регистрация и восстановление: код приходит в Telegram-бота по ссылке,
+   который открывает пользователь (бот привязывает чат к попытке). */
 import { $ } from '../dom.js';
 import { usernameError, isPasswordValid } from '../validators.js';
 import { haptic } from '../haptics.js';
 
-const RESEND_SEC = 30;       // запасное значение; реальный интервал приходит от сервера (cooldown)
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
-
+const PASSWORD_HINT = 'Пароль: от 8 символов, строчная латинская буква и цифра.';
 function showFormError(node, message) {
   node.textContent = message || '';
   node.hidden = !message;
@@ -22,18 +20,6 @@ function shake(node) {
   void node.offsetWidth;
   node.classList.add('is-shaking');
 }
-/** Запрашивает код и возвращает, через сколько секунд можно отправить новый. Если код уже отправлен
- *  меньше интервала назад (429 + retry_after), письмо у пользователя уже есть — просто ведём на ввод кода. */
-async function requestCode(send) {
-  try {
-    const res = await send();
-    return Number(res?.cooldown) > 0 ? Number(res.cooldown) : RESEND_SEC;
-  } catch (e) {
-    const wait = Number(e.fields?.retry_after);
-    if (e.status === 429 && wait > 0) return wait;
-    throw e;
-  }
-}
 function setBusy(btn, busy, label) {
   btn.disabled = busy;
   btn.dataset.label ??= btn.textContent;
@@ -42,17 +28,17 @@ function setBusy(btn, busy, label) {
 
 /**
  * handlers:
- *  onLogin(username, password)                   — вход;
- *  onSendCode({username, password, email})       — проверить поля регистрации и отправить код (бросает ApiError);
- *  onRegister({username, password, email, code})  — создать аккаунт;
- *  onResetCode(email)                             — отправить код для сброса пароля (бросает ApiError);
- *  onResetPassword({email, code, password})       — сменить пароль по коду.
+ *  onLogin(username, password)        — вход;
+ *  onSendCode({username, password})   — проверить поля и создать попытку регистрации → {ref, link} (бросает ApiError);
+ *  onRegister({ref, code})            — создать аккаунт по коду из бота;
+ *  onResetCode(username)              — создать попытку восстановления → {ref, link} (бросает ApiError);
+ *  onResetPassword({ref, code, password}) — сменить пароль по коду из бота.
  */
 export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPassword }) {
   const tabs = $('#auth-tabs');
   const loginForm = $('#form-login'), regForm = $('#form-register');
   const lUser = $('#login-username'), lPass = $('#login-password');
-  const rUser = $('#reg-username'), rPass = $('#reg-password'), rMail = $('#reg-email');
+  const rUser = $('#reg-username'), rPass = $('#reg-password');
 
   // ---------------------------------------------------------------------
   // Общий приём плавного переключения: высота обёртки перетекает к нужной,
@@ -144,9 +130,9 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
   const codeTitle = $('#code-title'), codeSent = $('#code-sent');
   const codeBoxesWrap = $('#code-boxes');
   const codeBoxes = Array.from(codeBoxesWrap.querySelectorAll('.code-box'));
-  const codeError = $('#code-error'), codeSubmit = $('#code-submit'), codeResend = $('#code-resend');
-  let codeCtx = null;             // { purpose: 'register'|'reset', data, onDone }
-  let resendTimer = null;
+  const codeError = $('#code-error'), codeSubmit = $('#code-submit');
+  let codeCtx = null;             // { onDone }
+  const codeBot = $('#code-bot');
 
   function codeValue() { return codeBoxes.map((b) => b.value).join(''); }
   function clearCode() {
@@ -181,49 +167,15 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
     });
   });
 
-  function maskEmail(email) {
-    const [name, domain] = email.split('@');
-    if (!domain) return email;
-    const visible = name.slice(0, 2);
-    return `${visible}${'•'.repeat(Math.max(1, name.length - visible.length))}@${domain}`;
-  }
-
-  function startResendCooldown(resend, seconds = RESEND_SEC) {
-    clearInterval(resendTimer);
-    let left = seconds;
-    codeResend.disabled = true;
-    const tick = () => {
-      codeResend.textContent = left > 0 ? `Отправить снова через ${left} с` : 'Отправить снова';
-      if (left <= 0) { clearInterval(resendTimer); codeResend.disabled = false; }
-      left -= 1;
-    };
-    tick(); resendTimer = setInterval(tick, 1000);
-    codeResend.onclick = async () => {
-      showFormError(codeError, '');
-      codeResend.disabled = true;
-      try {
-        const sec = await requestCode(resend);
-        clearCode(); codeBoxes[0].focus();
-        startResendCooldown(resend, sec);
-      } catch (e) {
-        showFormError(codeError, e.message);
-        codeResend.disabled = false;
-        codeResend.textContent = 'Отправить снова';
-      }
-    };
-  }
-
-  /** Открывает страницу кода. sent — текст над ячейками, resend — функция повторной отправки. */
-  function openCodePage({ title, email, onDone, resend, cooldown }) {
+  /** Открывает страницу кода. link — ссылка на бота, onDone(code) — подтверждение кода. */
+  function openCodePage({ title, sent, link, onDone }) {
     codeCtx = { onDone };
     codeTitle.textContent = title;
-    codeSent.textContent = email.startsWith('@')
-      ? `Код отправлен в Telegram ${email}. Он действует 10 минут.`
-      : `Код отправлен на ${maskEmail(email)}. Он действует 10 минут.`;
+    codeSent.textContent = sent;
+    codeBot.href = link;
     clearCode();
     showFormError(codeError, '');
     goTo(viewCode, { onShown: () => codeBoxes[0].focus() });
-    startResendCooldown(resend, cooldown);
   }
 
   async function submitCode() {
@@ -243,7 +195,6 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
   codeSubmit.addEventListener('click', submitCode);
 
   function backFromCode() {
-    clearInterval(resendTimer);
     codeCtx = null;
     goTo(viewAuth, { onShown: () => (tabs.dataset.active === 'login' ? lUser : rUser).focus({ preventScroll: true }) });
   }
@@ -269,27 +220,25 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
   rPass.addEventListener('input', () => setFieldError(rPass, rPass.value && !isPasswordValid(rPass.value)
     ? 'Пароль: от 8 символов, строчная латинская буква и цифра.' : ''));
 
-  // Регистрация: логин + Telegram-ник + пароль → страница кода (код в бот) → создание аккаунта.
-  const regData = () => ({ username: rUser.value.trim(), password: rPass.value, email: rMail.value.trim().toLowerCase() });
+  // Регистрация: логин + пароль → ссылка на бота → код из бота → создание аккаунта.
+  const regData = () => ({ username: rUser.value.trim(), password: rPass.value });
   const regBtn = $('#reg-submit');
   regForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('#reg-error'); showFormError(err, '');
     const d = regData();
     const uErr = usernameError(d.username);
-    const pErr = isPasswordValid(d.password) ? '' : 'Пароль: от 8 символов, строчная латинская буква и цифра.';
-    const mErr = /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/.test(d.email) ? '' : 'Введите Telegram-ник, например @name.';
-    setFieldError(rUser, uErr); setFieldError(rPass, pErr); setFieldError(rMail, mErr);
-    if (uErr || pErr || mErr) { shake(regForm); haptic.error(); return; }
+    const pErr = isPasswordValid(d.password) ? '' : PASSWORD_HINT;
+    setFieldError(rUser, uErr); setFieldError(rPass, pErr);
+    if (uErr || pErr) { shake(regForm); haptic.error(); return; }
     setBusy(regBtn, true);
     try {
-      const cooldown = await requestCode(() => onSendCode(d));
+      const { ref, link } = await onSendCode(d);
       openCodePage({
         title: 'Подтверждение',
-        email: d.email,
-        cooldown,
-        resend: () => onSendCode(regData()),
-        onDone: (code) => onRegister({ ...regData(), code }),
+        sent: 'Откройте бота и нажмите Start. Код придёт в Telegram и действует 15 минут.',
+        link,
+        onDone: (code) => onRegister({ ref, code }),
       });
     } catch (e2) {
       const f = e2.fields || {};
@@ -301,14 +250,14 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
   });
 
   // ---------------------------------------------------------------------
-  // Восстановление пароля: почта → страница кода → новый пароль.
-  const recoverForm = $('#form-recover'), recoverEmail = $('#recover-email');
-  let resetEmail = '', resetCode = '';
+  // Восстановление пароля: логин → ссылка на бота → код → новый пароль.
+  const recoverForm = $('#form-recover'), recoverUser = $('#recover-username');
+  let resetRef = '', resetCode = '';
 
   $('#to-recover').addEventListener('click', () => {
     showFormError($('#recover-error'), '');
     recoverForm.reset();
-    goTo(viewRecover, { onShown: () => recoverEmail.focus({ preventScroll: true }) });
+    goTo(viewRecover, { onShown: () => recoverUser.focus({ preventScroll: true }) });
   });
   $('#recover-back').addEventListener('click', () => {
     goTo(viewAuth, { onShown: () => lUser.focus({ preventScroll: true }) });
@@ -317,21 +266,19 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
   recoverForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('#recover-error'); showFormError(err, '');
-    const email = recoverEmail.value.trim().toLowerCase();
-    if (!EMAIL_RE.test(email)) { showFormError(err, 'Введите корректный адрес почты.'); shake(recoverForm); haptic.error(); return; }
+    const username = recoverUser.value.trim();
+    if (!username) { showFormError(err, 'Введите логин.'); shake(recoverForm); haptic.error(); return; }
     const btn = recoverForm.querySelector('button[type="submit"]');
     setBusy(btn, true);
     try {
-      const cooldown = await requestCode(() => onResetCode(email));
-      resetEmail = email;
+      const { ref, link } = await onResetCode(username);
+      resetRef = ref;
       openCodePage({
         title: 'Восстановление пароля',
-        email,
-        cooldown,
-        resend: () => onResetCode(resetEmail),
+        sent: 'Откройте бота и нажмите Start. Код придёт в Telegram, привязанный к аккаунту.',
+        link,
         onDone: async (code) => {
           resetCode = code;
-          clearInterval(resendTimer);
           $('#newpass-password').value = '';
           showFormError($('#newpass-error'), '');
           goTo(viewNewpass, { onShown: () => $('#newpass-password').focus({ preventScroll: true }) });
@@ -352,10 +299,11 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
     if (pErr) { shake(newpassForm); haptic.error(); return; }
     const btn = newpassForm.querySelector('button[type="submit"]');
     setBusy(btn, true);
-    try { await onResetPassword({ email: resetEmail, code: resetCode, password: newpassInput.value }); haptic.success(); }
+    try { await onResetPassword({ ref: resetRef, code: resetCode, password: newpassInput.value }); haptic.success(); }
     catch (e2) {
-      showFormError(err, e2.message); shake(newpassForm); haptic.error();
-      // Код мог успеть истечь, пока вводили пароль — возвращаем на страницу кода, а не бросаем тупик.
+      // Код проверяется на сервере только здесь: при ошибке (неверный или истёкший код) ведём на ввод кода.
+      clearCode();
+      showFormError(codeError, e2.message); shake(codeBoxesWrap); haptic.error();
       goTo(viewCode, { onShown: () => codeBoxes[0].focus() });
     }
     finally { setBusy(btn, false); }
@@ -363,12 +311,11 @@ export function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onR
 
   return {
     reset() {
-      clearInterval(resendTimer);
       loginForm.reset(); regForm.reset(); recoverForm?.reset(); newpassForm?.reset();
       for (const n of ['#login-error', '#reg-error', '#recover-error', '#newpass-error', '#code-error']) showFormError($(n), '');
-      for (const i of [rUser, rPass, rMail, newpassInput]) setFieldError(i, '');
+      for (const i of [rUser, rPass, newpassInput]) setFieldError(i, '');
       clearCode();
-      codeCtx = null; resetEmail = ''; resetCode = '';
+      codeCtx = null; resetRef = ''; resetCode = '';
       for (const v of [viewCode, viewRecover, viewNewpass]) { v.hidden = true; v.classList.remove('auth-form--out', 'auth-form--in'); }
       viewAuth.hidden = false; viewAuth.classList.remove('auth-form--out', 'auth-form--in');
       currentView = viewAuth;

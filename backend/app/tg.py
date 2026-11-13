@@ -1,10 +1,13 @@
-"""Telegram-бот для регистрации: код приходит в чат пользователю.
+"""Telegram-бот: единственный канал регистрации и восстановления пароля.
 
-Бот не может написать первым, поэтому пользователь сначала нажимает Start в боте.
-Опрос обновлений (getUpdates) запоминает ник → chat_id в таблице tg_chats.
-Без AQUA_TG_BOT_TOKEN модуль просто не активен."""
+Пользователь открывает ссылку t.me/<бот>?start=r_<ref> (регистрация) или ?start=x_<ref> (восстановление).
+Бот получает /start, привязывает chat_id к попытке и присылает 6-значный код в чат.
+Опрос getUpdates идёт в фоновом потоке. Без AQUA_TG_BOT_TOKEN модуль неактивен."""
+import hashlib
+import hmac
 import json
 import logging
+import secrets
 import threading
 import time
 import urllib.error
@@ -12,14 +15,26 @@ import urllib.request
 
 from . import config
 from .database import connect
-from .mail import MailDeliveryError
 
 log = logging.getLogger("aqua.tg")
 API = "https://api.telegram.org/bot{token}/{method}"
 
 
+class TgError(Exception):
+    """Telegram не принял запрос (нет соединения, бот заблокирован пользователем и т. п.)."""
+
+
 def enabled() -> bool:
     return bool(config.TG_BOT_TOKEN and config.TG_BOT_USERNAME)
+
+
+def link_for(ref: str, kind: str) -> str:
+    prefix = "r_" if kind == "register" else "x_"
+    return f"https://t.me/{config.TG_BOT_USERNAME}?start={prefix}{ref}"
+
+
+def code_hash(ref: str, code: str) -> str:
+    return hmac.new(config.SECRET_KEY.encode(), f"{ref}|{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def _call(method: str, payload: dict, timeout: int = 30) -> dict:
@@ -30,44 +45,51 @@ def _call(method: str, payload: dict, timeout: int = 30) -> dict:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:                      # раньше URLError: это его подкласс
-        raise MailDeliveryError(f"telegram: HTTP {e.code}: {e.read().decode(errors='replace')[:300]}") from e
+        raise TgError(f"HTTP {e.code}: {e.read().decode(errors='replace')[:300]}") from e
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
-        raise MailDeliveryError(f"telegram: нет соединения: {type(e).__name__}") from e
+        raise TgError(f"нет соединения: {type(e).__name__}") from e
     if not data.get("ok"):
-        raise MailDeliveryError(f"telegram: {data.get('description', 'ошибка')}")
+        raise TgError(data.get("description", "ошибка"))
     return data
 
 
-def chat_id_for(conn, contact: str) -> int | None:
-    """contact — вида «@name»."""
-    row = conn.execute("SELECT chat_id FROM tg_chats WHERE username = ?", (contact[1:],)).fetchone()
-    return row["chat_id"] if row else None
+def _send(chat_id: int, text: str) -> None:
+    _call("sendMessage", {"chat_id": chat_id, "text": text}, timeout=15)
 
 
-def send_code(chat_id: int, code: str) -> None:
-    text = f"Ваш код для регистрации в Aqua: {code}\n\nКод действует 10 минут. Никому его не сообщайте."
-    _call("sendMessage", {"chat_id": chat_id, "text": text})
-
-
-def _remember(username: str, chat_id: int) -> None:
-    with connect() as conn:
-        conn.execute(
-            "INSERT INTO tg_chats (username, chat_id, updated_at) VALUES (?, ?, ?) "
-            "ON CONFLICT(username) DO UPDATE SET chat_id = excluded.chat_id, updated_at = excluded.updated_at",
-            (username, chat_id, time.time()))
-        conn.commit()
+def _start(conn, kind: str, ref: str, chat_id: int) -> None:
+    row = conn.execute("SELECT * FROM tg_refs WHERE ref = ?", (ref,)).fetchone()
+    if not row or row["kind"] != kind or row["used"] or time.time() > row["expires_at"]:
+        _send(chat_id, "Ссылка устарела. Начните заново в приложении Aqua.")
+        return
+    if kind == "reset":                                       # код восстановления — только в чат владельца аккаунта
+        owner = conn.execute("SELECT tg_chat_id FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+        if not owner or owner["tg_chat_id"] != chat_id:
+            _send(chat_id, "Этот запрос создан для другого аккаунта.")
+            return
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    conn.execute("UPDATE tg_refs SET chat_id = ?, code_hash = ?, tries = 0 WHERE ref = ?",
+                 (chat_id, code_hash(ref, code), ref))
+    conn.commit()
+    _send(chat_id, f"Ваш код для Aqua: {code}\n\nКод действует 15 минут. Никому его не сообщайте.")
 
 
 def _handle(update: dict) -> None:
     msg = update.get("message") or {}
-    username = (msg.get("from") or {}).get("username")
     chat_id = (msg.get("chat") or {}).get("id")
-    if not username or not chat_id:
-        return                                               # у пользователя без ника код не отправить
-    _remember(username, chat_id)
-    if (msg.get("text") or "").startswith("/start"):
-        _call("sendMessage", {"chat_id": chat_id, "text":
-              "Готово! Вернитесь в Aqua и нажмите «Получить код»."}, timeout=15)
+    if not chat_id:
+        return
+    text = (msg.get("text") or "").strip()
+    if not text.startswith("/start"):
+        _send(chat_id, "Откройте ссылку из приложения Aqua, чтобы получить код.")
+        return
+    payload = text[len("/start"):].strip()
+    if payload[:2] in ("r_", "x_") and len(payload) > 2:
+        kind = "register" if payload[:2] == "r_" else "reset"
+        with connect() as conn:
+            _start(conn, kind, payload[2:], chat_id)
+    else:
+        _send(chat_id, "Привет! Откройте ссылку из приложения Aqua, чтобы получить код.")
 
 
 def _poll_loop() -> None:
@@ -79,8 +101,11 @@ def _poll_loop() -> None:
                 payload["offset"] = offset
             for upd in _call("getUpdates", payload, timeout=35).get("result", []):
                 offset = upd["update_id"] + 1
-                _handle(upd)
-        except Exception as e:                                # сеть недоступна — подождать и повторить
+                try:
+                    _handle(upd)
+                except Exception as e:                        # один плохой апдейт не должен останавливать опрос
+                    log.error("Telegram: апдейт не обработан: %s", e)
+        except Exception as e:
             log.error("Telegram: опрос обновлений не удался: %s", e)
             time.sleep(5)
 
@@ -89,4 +114,4 @@ def start_polling() -> None:
     if not (enabled() and config.TG_POLLING):
         return
     threading.Thread(target=_poll_loop, name="aqua-tg-poll", daemon=True).start()
-    log.info("Telegram: бот @%s слушает /start", config.TG_BOT_USERNAME)
+    log.info("Telegram: бот @%s принимает /start", config.TG_BOT_USERNAME)

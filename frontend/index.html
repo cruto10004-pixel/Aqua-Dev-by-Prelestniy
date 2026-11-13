@@ -230,7 +230,7 @@
           <button class="auth__link" type="button" id="to-recover">Забыли пароль?</button>
         </form>
 
-        <!-- Регистрация: логин, Telegram-ник, пароль — код приходит в Telegram-бот, вводится на отдельной странице -->
+        <!-- Регистрация: логин и пароль — код приходит в Telegram-бот по ссылке, вводится на отдельной странице -->
         <form id="form-register" novalidate hidden>
           <div class="form-error" id="reg-error" role="alert" hidden></div>
           <div class="field">
@@ -238,13 +238,6 @@
             <input class="input" id="reg-username" name="username" type="text" autocomplete="username"
                    autocapitalize="none" autocorrect="off" spellcheck="false" required>
             <p class="field__error" id="reg-username-error"></p>
-          </div>
-          <div class="field">
-            <label class="field__label" for="reg-email">Telegram-ник</label>
-            <input class="input" id="reg-email" name="email" type="text" autocomplete="off" placeholder="@ник"
-                   autocapitalize="none" autocorrect="off" spellcheck="false" required>
-            <p class="field__error" id="reg-email-error"></p>
-            <p class="auth__hint">Сначала откройте бота и нажмите Start — код придёт туда.</p>
           </div>
           <div class="field">
             <label class="field__label" for="reg-password">Пароль</label>
@@ -261,9 +254,10 @@
         <button class="auth__back" type="button" id="code-back" aria-label="Назад">
           <svg class="icon"><use href="#i-forward"/></svg>
         </button>
-        <h2 class="auth__view-title" id="code-title">Подтверждение почты</h2>
+        <h2 class="auth__view-title" id="code-title">Подтверждение</h2>
         <p class="auth__hint" id="code-sent"></p>
-        <div class="code-boxes" id="code-boxes" role="group" aria-label="Код из письма">
+        <a class="btn btn--ghost btn--block" id="code-bot" href="#" target="_blank" rel="noopener">Открыть бота в Telegram</a>
+        <div class="code-boxes" id="code-boxes" role="group" aria-label="Код из Telegram">
           <input class="code-box" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Цифра 1" autocomplete="one-time-code">
           <input class="code-box" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Цифра 2">
           <input class="code-box" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Цифра 3">
@@ -273,21 +267,20 @@
         </div>
         <p class="form-error" id="code-error" role="alert" hidden></p>
         <button class="btn btn--primary btn--block" type="button" id="code-submit" disabled>Подтвердить</button>
-        <button class="btn btn--ghost btn--block" type="button" id="code-resend" disabled>Отправить снова</button>
       </section>
 
-      <!-- ---------- Восстановление, шаг 1: почта ---------- -->
+      <!-- ---------- Восстановление, шаг 1: логин ---------- -->
       <section class="auth-view" id="view-recover" data-view="recover" hidden>
         <button class="auth__back" type="button" id="recover-back" aria-label="Назад">
           <svg class="icon"><use href="#i-forward"/></svg>
         </button>
         <h2 class="auth__view-title">Восстановление пароля</h2>
-        <p class="auth__hint">Укажите почту, привязанную к аккаунту — пришлём код для сброса пароля.</p>
+        <p class="auth__hint">Код для сброса придёт в Telegram, привязанный к аккаунту.</p>
         <form id="form-recover" novalidate>
           <div class="form-error" id="recover-error" role="alert" hidden></div>
           <div class="field">
-            <label class="field__label" for="recover-email">Почта</label>
-            <input class="input" id="recover-email" name="email" type="email" autocomplete="email" inputmode="email"
+            <label class="field__label" for="recover-username">Логин</label>
+            <input class="input" id="recover-username" name="username" type="text" autocomplete="username"
                    autocapitalize="none" autocorrect="off" spellcheck="false" required>
           </div>
           <button class="btn btn--primary btn--block" type="submit">Отправить код</button>

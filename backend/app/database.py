@@ -216,29 +216,29 @@ def init_db(path: Path = DB_PATH) -> None:
         if "description" not in ccols:
             conn.execute("ALTER TABLE chats ADD COLUMN description TEXT NOT NULL DEFAULT ''")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chats_username ON chats(username)")
-        # Вход/регистрация по почте: адрес (уникальный, без учёта регистра) и одноразовые коды
+        # Регистрация и восстановление через Telegram-бота: привязка chat_id к аккаунту
         ucols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
-        if "email" not in ucols:
-            conn.execute("ALTER TABLE users ADD COLUMN email TEXT COLLATE NOCASE")
-        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
-        conn.execute("""CREATE TABLE IF NOT EXISTS email_codes (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            email       TEXT    NOT NULL COLLATE NOCASE,
-            code_hash   TEXT    NOT NULL,
-            created_at  REAL    NOT NULL,
-            expires_at  REAL    NOT NULL,
-            tries       INTEGER NOT NULL DEFAULT 0,
-            used        INTEGER NOT NULL DEFAULT 0,
-            purpose     TEXT    NOT NULL DEFAULT 'register')""")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email)")
-        ecols = {r["name"] for r in conn.execute("PRAGMA table_info(email_codes)")}
-        if "purpose" not in ecols:
-            conn.execute("ALTER TABLE email_codes ADD COLUMN purpose TEXT NOT NULL DEFAULT 'register'")
-        # Telegram-бот: ник → chat_id, чтобы слать код в чат (бот получает chat_id из обновлений)
-        conn.execute("""CREATE TABLE IF NOT EXISTS tg_chats (
-            username    TEXT    PRIMARY KEY COLLATE NOCASE,
-            chat_id     INTEGER NOT NULL,
-            updated_at  REAL    NOT NULL)""")
+        if "tg_chat_id" not in ucols:
+            conn.execute("ALTER TABLE users ADD COLUMN tg_chat_id INTEGER")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_tg_chat ON users(tg_chat_id)")
+        # Попытки регистрации/восстановления: ссылка на бота (ref), код хранится только хешем
+        conn.execute("""CREATE TABLE IF NOT EXISTS tg_refs (
+            ref           TEXT    PRIMARY KEY,
+            kind          TEXT    NOT NULL,
+            username      TEXT,
+            password_hash TEXT,
+            user_id       INTEGER,
+            chat_id       INTEGER,
+            code_hash     TEXT,
+            tries         INTEGER NOT NULL DEFAULT 0,
+            used          INTEGER NOT NULL DEFAULT 0,
+            created_at    REAL    NOT NULL,
+            expires_at    REAL    NOT NULL)""")
+        # Удаляем следы почтовой и прежней Telegram-схемы
+        conn.execute("DROP INDEX IF EXISTS idx_users_email")
+        conn.execute("DROP INDEX IF EXISTS idx_email_codes_email")
+        conn.execute("DROP TABLE IF EXISTS email_codes")
+        conn.execute("DROP TABLE IF EXISTS tg_chats")
         # Блок 4: пересланные, закреплённое сообщение, прочитанность
         if "fwd" not in cols:
             conn.execute("ALTER TABLE messages ADD COLUMN fwd TEXT")

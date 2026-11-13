@@ -125,28 +125,11 @@ CONTENT_SECURITY_POLICY = (
 )
 
 
-# --- Вход/регистрация по коду из письма ----------------------------------------
-# Письма шлём через Resend API (приоритетно) либо через обычный SMTP — задаются
-# переменными окружения. Без того и другого письма не уходят: в проде коды не
-# пишутся в лог; локально можно включить AQUA_EMAIL_DEV=1 — тогда код печатается в консоль.
-RESEND_API_KEY = os.getenv("AQUA_RESEND_API_KEY", "").strip()
-RESEND_FROM = os.getenv("AQUA_RESEND_FROM", "").strip()        # например: "Aqua <noreply@your-domain.com>"
-# Brevo (HTTP API, не SMTP — на Railway исходящий SMTP закрыт на не-Pro тарифах). Домен не нужен: достаточно
-# подтвердить адрес отправителя в кабинете Brevo (Senders & IP → Senders). AQUA_BREVO_FROM: "Aqua <you@gmail.com>".
-BREVO_API_KEY = os.getenv("AQUA_BREVO_API_KEY", "").strip()
-BREVO_FROM = os.getenv("AQUA_BREVO_FROM", "").strip()
-SMTP_HOST = os.getenv("AQUA_SMTP_HOST", "").strip()
-SMTP_PORT = int(os.getenv("AQUA_SMTP_PORT", "587"))
-SMTP_USER = os.getenv("AQUA_SMTP_USER", "").strip()
-SMTP_PASSWORD = os.getenv("AQUA_SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("AQUA_SMTP_FROM", "").strip() or SMTP_USER
-EMAIL_DEV = os.getenv("AQUA_EMAIL_DEV", "") == "1"
-# Telegram-бот: регистрация по нику. Код приходит в чат с ботом (пользователь сначала нажимает Start).
-# AQUA_TG_BOT_USERNAME — без @, например: aqua_codes_bot. AQUA_TG_POLLING=0 отключает опрос обновлений.
+# --- Регистрация и восстановление через Telegram-бота --------------------------
+# AQUA_TG_BOT_TOKEN — токен от @BotFather; AQUA_TG_BOT_USERNAME — ник бота без @.
+# AQUA_TG_POLLING=0 отключает опрос обновлений (нужно, если сервисов несколько).
 TG_BOT_TOKEN = os.getenv("AQUA_TG_BOT_TOKEN", "").strip()
 TG_BOT_USERNAME = os.getenv("AQUA_TG_BOT_USERNAME", "").strip().lstrip("@")
 TG_POLLING = os.getenv("AQUA_TG_POLLING", "1") != "0"
-EMAIL_CODE_TTL_SEC = 600          # код живёт 10 минут
-EMAIL_CODE_COOLDOWN_SEC = 30      # повторно можно запросить через 30 секунд
-EMAIL_CODE_MAX_TRIES = 5          # после 5 неверных вводов код сгорает
-EMAIL_TICKET_TTL_SEC = 900        # время на выбор имени после подтверждения почты
+TG_REF_TTL_SEC = 900              # ссылка и код живут 15 минут
+TG_CODE_MAX_TRIES = 5             # после 5 неверных вводов попытка сгорает
