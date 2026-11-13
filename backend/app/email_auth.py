@@ -4,6 +4,7 @@
 от одной цели нельзя использовать для другой."""
 import hashlib
 import hmac
+import logging
 import re
 import secrets
 import sqlite3
@@ -18,6 +19,8 @@ from .mail import mail_ready, send_login_code
 from .security import create_token, hash_password
 from .services import now_iso, serialize_user
 from .validators import validate_password, validate_username
+
+log = logging.getLogger("aqua.email_auth")
 
 router = APIRouter(prefix="/api/auth/register", tags=["auth"])
 reset_router = APIRouter(prefix="/api/auth/reset", tags=["auth"])
@@ -46,19 +49,25 @@ def _send_code(conn: sqlite3.Connection, email: str, purpose: str) -> dict:
         (email, purpose)).fetchone()
     if last and now - last["created_at"] < config.EMAIL_CODE_COOLDOWN_SEC:
         wait = int(config.EMAIL_CODE_COOLDOWN_SEC - (now - last["created_at"])) + 1
-        raise HTTPException(429, f"Код уже отправлен. Повторить можно через {wait} с.")
+        raise HTTPException(429, detail={"message": f"Код уже отправлен. Повторить можно через {wait} с.", "retry_after": wait})
     code = f"{secrets.randbelow(1_000_000):06d}"
-    conn.execute("UPDATE email_codes SET used = 1 WHERE email = ? AND purpose = ? AND used = 0", (email, purpose))
-    conn.execute(
+    cur = conn.execute(
         "INSERT INTO email_codes (email, code_hash, created_at, expires_at, purpose) VALUES (?, ?, ?, ?, ?)",
         (email, _code_hash(email, code), now, now + config.EMAIL_CODE_TTL_SEC, purpose))
+    new_id = cur.lastrowid
     conn.commit()
     try:
         send_login_code(email, code, purpose=purpose)
-    except Exception:                              # SMTP недоступен или не настроен
-        conn.execute("UPDATE email_codes SET used = 1 WHERE email = ? AND purpose = ? AND used = 0", (email, purpose))
+    except Exception as e:
+        # Письмо не ушло — код удаляем целиком: иначе он запустит кулдаун и пользователь будет ждать зря.
+        conn.execute("DELETE FROM email_codes WHERE id = ?", (new_id,))
         conn.commit()
+        log.error("Код (%s) не отправлен: %s: %s", purpose, type(e).__name__, e)
         raise HTTPException(503, "Не удалось отправить письмо. Попробуйте позже.")
+    # Доставлено — прежние неиспользованные коды больше не действуют, живёт только новый.
+    conn.execute("UPDATE email_codes SET used = 1 WHERE email = ? AND purpose = ? AND used = 0 AND id <> ?",
+                 (email, purpose, new_id))
+    conn.commit()
     return {"ok": True, "ttl": config.EMAIL_CODE_TTL_SEC, "cooldown": config.EMAIL_CODE_COOLDOWN_SEC}
 
 

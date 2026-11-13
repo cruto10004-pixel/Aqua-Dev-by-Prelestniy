@@ -24,6 +24,7 @@ function normalizeError(status, detail) {
     return new ApiError(status, detail.message || 'Ошибка запроса.', {
       username_errors: detail.username_errors || [],
       password_errors: detail.password_errors || [],
+      retry_after: detail.retry_after || 0,
     });
   }
   return new ApiError(status, 'Неизвестная ошибка сервера.');

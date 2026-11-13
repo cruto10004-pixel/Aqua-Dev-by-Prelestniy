@@ -1,12 +1,12 @@
 """Отправка кодов входа на почту.
 
-Приоритет: Resend API (AQUA_RESEND_API_KEY) → обычный SMTP (AQUA_SMTP_HOST) →
-без настройки — только в AQUA_EMAIL_DEV=1 код печатается в лог вместо отправки.
-Resend выбран дефолтным провайдером как самый простой в настройке (не нужен
-отдельный пароль приложения), но код не завязан на конкретного провайдера —
-смена на SMTP не требует правок кода, только переменных окружения."""
+Провайдеры пробуются по очереди, пока один не доставит письмо: Resend API (AQUA_RESEND_API_KEY) →
+Brevo API (AQUA_BREVO_API_KEY + AQUA_BREVO_FROM) → обычный SMTP (AQUA_SMTP_HOST). Без единого провайдера
+письма не уходят; только в AQUA_EMAIL_DEV=1 код печатается в лог вместо отправки.
+Каждый сбой пишется в лог с ответом провайдера — по логу Railway видно, почему письмо не ушло."""
 import json
 import logging
+import re
 import smtplib
 import urllib.error
 import urllib.request
@@ -17,14 +17,32 @@ from . import config
 log = logging.getLogger("aqua.mail")
 
 RESEND_URL = "https://api.resend.com/emails"
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+RESEND_DEFAULT_FROM = "Aqua <onboarding@resend.dev>"
+_FROM_RE = re.compile(r"^\s*(?:\"?([^<\"]*?)\"?\s*)?<([^<>@\s]+@[^<>@\s]+)>\s*$")
 
 
 class MailNotConfigured(Exception):
-    pass
+    """Ни один способ отправки не настроен."""
+
+
+class MailDeliveryError(Exception):
+    """Провайдер настроен, но письмо не доставлено (ключ отклонён, домен не подтверждён, нет сети)."""
+
+
+def _providers() -> list[tuple[str, callable]]:
+    found = []
+    if config.RESEND_API_KEY:
+        found.append(("resend", _send_via_resend))
+    if config.BREVO_API_KEY and config.BREVO_FROM:
+        found.append(("brevo", _send_via_brevo))
+    if config.SMTP_HOST and config.SMTP_FROM:
+        found.append(("smtp", _send_via_smtp))
+    return found
 
 
 def mail_ready() -> bool:
-    return bool(config.RESEND_API_KEY) or bool(config.SMTP_HOST and config.SMTP_FROM) or config.EMAIL_DEV
+    return bool(_providers()) or config.EMAIL_DEV
 
 
 def _subject_and_text(code: str, purpose: str) -> tuple[str, str]:
@@ -37,27 +55,32 @@ def _subject_and_text(code: str, purpose: str) -> tuple[str, str]:
     return subject, body
 
 
-def _send_via_resend(to: str, subject: str, text: str) -> None:
-    payload = json.dumps({
-        "from": config.RESEND_FROM or "Aqua <onboarding@resend.dev>",
-        "to": [to],
-        "subject": subject,
-        "text": text,
-    }).encode()
+def _post_json(url: str, headers: dict, payload: dict, provider: str) -> None:
     req = urllib.request.Request(
-        RESEND_URL, data=payload, method="POST",
-        headers={"Authorization": f"Bearer {config.RESEND_API_KEY}", "Content-Type": "application/json"})
+        url, data=json.dumps(payload).encode(), method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json", **headers})
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             if resp.status >= 300:
-                raise MailNotConfigured(f"Resend ответил {resp.status}")
+                raise MailDeliveryError(f"{provider}: ответ {resp.status}")
     except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="replace")
-        log.error("Resend: ошибка отправки (%s): %s", e.code, detail)
-        raise MailNotConfigured(f"Resend: {e.code}") from e
-    except urllib.error.URLError as e:
-        log.error("Resend: нет соединения: %s", e)
-        raise MailNotConfigured("Resend недоступен") from e
+        detail = e.read().decode(errors="replace")[:500]
+        raise MailDeliveryError(f"{provider}: HTTP {e.code}: {detail}") from e
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise MailDeliveryError(f"{provider}: нет соединения: {e}") from e
+
+
+def _send_via_resend(to: str, subject: str, text: str) -> None:
+    _post_json(RESEND_URL, {"Authorization": f"Bearer {config.RESEND_API_KEY}"}, {
+        "from": config.RESEND_FROM or RESEND_DEFAULT_FROM,
+        "to": [to], "subject": subject, "text": text}, "resend")
+
+
+def _send_via_brevo(to: str, subject: str, text: str) -> None:
+    m = _FROM_RE.match(config.BREVO_FROM)
+    sender = {"name": (m.group(1) or "Aqua").strip() or "Aqua", "email": m.group(2)} if m else {"name": "Aqua", "email": config.BREVO_FROM.strip()}
+    _post_json(BREVO_URL, {"api-key": config.BREVO_API_KEY}, {
+        "sender": sender, "to": [{"email": to}], "subject": subject, "textContent": text}, "brevo")
 
 
 def _send_via_smtp(to: str, subject: str, text: str) -> None:
@@ -66,22 +89,30 @@ def _send_via_smtp(to: str, subject: str, text: str) -> None:
     msg["From"] = config.SMTP_FROM
     msg["To"] = to
     msg.set_content(text)
-    with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=15) as smtp:
-        smtp.starttls()
-        if config.SMTP_USER:
-            smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
-        smtp.send_message(msg)
+    try:
+        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=15) as smtp:
+            smtp.starttls()
+            if config.SMTP_USER:
+                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
+            smtp.send_message(msg)
+    except (smtplib.SMTPException, OSError) as e:
+        raise MailDeliveryError(f"smtp: {type(e).__name__}: {e}") from e
 
 
 def send_login_code(to: str, code: str, purpose: str = "register") -> None:
     subject, text = _subject_and_text(code, purpose)
-    if config.RESEND_API_KEY:
-        _send_via_resend(to, subject, text)
-        return
-    if config.SMTP_HOST:
-        _send_via_smtp(to, subject, text)
-        return
-    if config.EMAIL_DEV:                       # только для локальной разработки
-        log.warning("DEV: код (%s) для %s: %s", purpose, to, code)
-        return
-    raise MailNotConfigured("Отправка писем не настроена.")
+    providers = _providers()
+    if not providers:
+        if config.EMAIL_DEV:                       # только для локальной разработки
+            log.warning("DEV: код (%s) для %s: %s", purpose, to, code)
+            return
+        raise MailNotConfigured("Отправка писем не настроена.")
+    last_error = None
+    for name, send in providers:
+        try:
+            send(to, subject, text)
+            return
+        except MailDeliveryError as e:
+            last_error = e
+            log.error("Почта: письмо не ушло через %s (%s)", name, e)
+    raise last_error

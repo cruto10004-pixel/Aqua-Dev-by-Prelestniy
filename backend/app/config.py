@@ -131,6 +131,10 @@ CONTENT_SECURITY_POLICY = (
 # пишутся в лог; локально можно включить AQUA_EMAIL_DEV=1 — тогда код печатается в консоль.
 RESEND_API_KEY = os.getenv("AQUA_RESEND_API_KEY", "").strip()
 RESEND_FROM = os.getenv("AQUA_RESEND_FROM", "").strip()        # например: "Aqua <noreply@your-domain.com>"
+# Brevo (HTTP API, не SMTP — на Railway исходящий SMTP закрыт на не-Pro тарифах). Домен не нужен: достаточно
+# подтвердить адрес отправителя в кабинете Brevo (Senders & IP → Senders). AQUA_BREVO_FROM: "Aqua <you@gmail.com>".
+BREVO_API_KEY = os.getenv("AQUA_BREVO_API_KEY", "").strip()
+BREVO_FROM = os.getenv("AQUA_BREVO_FROM", "").strip()
 SMTP_HOST = os.getenv("AQUA_SMTP_HOST", "").strip()
 SMTP_PORT = int(os.getenv("AQUA_SMTP_PORT", "587"))
 SMTP_USER = os.getenv("AQUA_SMTP_USER", "").strip()
@@ -138,6 +142,6 @@ SMTP_PASSWORD = os.getenv("AQUA_SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("AQUA_SMTP_FROM", "").strip() or SMTP_USER
 EMAIL_DEV = os.getenv("AQUA_EMAIL_DEV", "") == "1"
 EMAIL_CODE_TTL_SEC = 600          # код живёт 10 минут
-EMAIL_CODE_COOLDOWN_SEC = 60      # повторно можно запросить через минуту
+EMAIL_CODE_COOLDOWN_SEC = 30      # повторно можно запросить через 30 секунд
 EMAIL_CODE_MAX_TRIES = 5          # после 5 неверных вводов код сгорает
 EMAIL_TICKET_TTL_SEC = 900        # время на выбор имени после подтверждения почты

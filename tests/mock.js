@@ -96,7 +96,11 @@ async function setup(browser, ctxOpts = {}, opts = {}) {
       return d.password === 'secret123' ? json(200, { token: 'tok', token_type: 'bearer', user: be.me })
         : json(401, { detail: 'Неверное имя пользователя или пароль.' });
     }
-    if (path === '/auth/register/code') return json(200, { ok: true, ttl: 600, cooldown: 60 });
+    if (path === '/auth/register/code') {                      // be.codeMode: 'ok' | 'fail' | 'cooldown'
+      if (be.codeMode === 'fail') return json(503, { detail: 'Не удалось отправить письмо. Попробуйте позже.' });
+      if (be.codeMode === 'cooldown') return json(429, { detail: { message: 'Код уже отправлен. Повторить можно через 12 с.', retry_after: 12 } });
+      return json(200, { ok: true, ttl: 600, cooldown: 30 });
+    }
     if (path === '/auth/register') {
       const d = req.postDataJSON();
       return d.code === '123456' ? json(201, { token: 'tok', token_type: 'bearer', user: be.me })

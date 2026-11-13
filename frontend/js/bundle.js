@@ -124,6 +124,7 @@ function normalizeError(status, detail) {
     return new ApiError(status, detail.message || 'Ошибка запроса.', {
       username_errors: detail.username_errors || [],
       password_errors: detail.password_errors || [],
+      retry_after: detail.retry_after || 0,
     });
   }
   return new ApiError(status, 'Неизвестная ошибка сервера.');
@@ -620,7 +621,7 @@ __m["ui/auth-view.js"] = (function () {
 
 
 
-const RESEND_SEC = 60;
+const RESEND_SEC = 30;       // запасное значение; реальный интервал приходит от сервера (cooldown)
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
 function showFormError(node, message) {
@@ -636,6 +637,18 @@ function shake(node) {
   node.classList.remove('is-shaking');
   void node.offsetWidth;
   node.classList.add('is-shaking');
+}
+/** Запрашивает код и возвращает, через сколько секунд можно отправить новый. Если код уже отправлен
+ *  меньше интервала назад (429 + retry_after), письмо у пользователя уже есть — просто ведём на ввод кода. */
+async function requestCode(send) {
+  try {
+    const res = await send();
+    return Number(res?.cooldown) > 0 ? Number(res.cooldown) : RESEND_SEC;
+  } catch (e) {
+    const wait = Number(e.fields?.retry_after);
+    if (e.status === 429 && wait > 0) return wait;
+    throw e;
+  }
 }
 function setBusy(btn, busy, label) {
   btn.disabled = busy;
@@ -791,9 +804,9 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     return `${visible}${'•'.repeat(Math.max(1, name.length - visible.length))}@${domain}`;
   }
 
-  function startResendCooldown(resend) {
+  function startResendCooldown(resend, seconds = RESEND_SEC) {
     clearInterval(resendTimer);
-    let left = RESEND_SEC;
+    let left = seconds;
     codeResend.disabled = true;
     const tick = () => {
       codeResend.textContent = left > 0 ? `Отправить снова через ${left} с` : 'Отправить снова';
@@ -803,20 +816,28 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     tick(); resendTimer = setInterval(tick, 1000);
     codeResend.onclick = async () => {
       showFormError(codeError, '');
-      try { await resend(); startResendCooldown(resend); }
-      catch (e) { showFormError(codeError, e.message); }
+      codeResend.disabled = true;
+      try {
+        const sec = await requestCode(resend);
+        clearCode(); codeBoxes[0].focus();
+        startResendCooldown(resend, sec);
+      } catch (e) {
+        showFormError(codeError, e.message);
+        codeResend.disabled = false;
+        codeResend.textContent = 'Отправить снова';
+      }
     };
   }
 
   /** Открывает страницу кода. sent — текст над ячейками, resend — функция повторной отправки. */
-  function openCodePage({ title, email, onDone, resend }) {
+  function openCodePage({ title, email, onDone, resend, cooldown }) {
     codeCtx = { onDone };
     codeTitle.textContent = title;
     codeSent.textContent = `Код отправлен на ${maskEmail(email)}. Он действует 10 минут.`;
     clearCode();
     showFormError(codeError, '');
     goTo(viewCode, { onShown: () => codeBoxes[0].focus() });
-    startResendCooldown(resend);
+    startResendCooldown(resend, cooldown);
   }
 
   async function submitCode() {
@@ -876,10 +897,11 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     if (uErr || pErr || mErr) { shake(regForm); haptic.error(); return; }
     setBusy(regBtn, true);
     try {
-      await onSendCode(d);
+      const cooldown = await requestCode(() => onSendCode(d));
       openCodePage({
         title: 'Подтверждение почты',
         email: d.email,
+        cooldown,
         resend: () => onSendCode(regData()),
         onDone: (code) => onRegister({ ...regData(), code }),
       });
@@ -914,11 +936,12 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     const btn = recoverForm.querySelector('button[type="submit"]');
     setBusy(btn, true);
     try {
-      await onResetCode(email);
+      const cooldown = await requestCode(() => onResetCode(email));
       resetEmail = email;
       openCodePage({
         title: 'Восстановление пароля',
         email,
+        cooldown,
         resend: () => onResetCode(resetEmail),
         onDone: async (code) => {
           resetCode = code;

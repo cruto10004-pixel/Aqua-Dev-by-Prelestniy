@@ -26,8 +26,10 @@ database.init_db()
 c = database._open(config.DB_PATH)
 sent = {}
 config.EMAIL_DEV = True
-mail.send_login_code = lambda to, code: sent.__setitem__(to, code)
-email_auth.send_login_code = mail.send_login_code
+def fake_send(to, code, purpose="register"):
+    sent[to] = code; sent[(to, purpose)] = code
+mail.send_login_code = fake_send
+email_auth.send_login_code = fake_send
 email_auth.mail_ready = lambda: True
 def expect(status, fn):
     try: fn(); raise SystemExit(f"expected {status}")
@@ -39,7 +41,10 @@ expect(422, lambda: email_auth.send_code(S(username="ann_1", password="short", e
 expect(422, lambda: email_auth.send_code(S(username="ann_1", password="secret123", email="nope"), c))           # плохая почта
 email_auth.send_code(S(**d), c)
 code = sent["ann@example.com"]
-expect(429, lambda: email_auth.send_code(S(**d), c))                                                             # cooldown
+try: email_auth.send_code(S(**d), c); raise SystemExit("expected 429")
+except HTTPException as e:                                                                                       # cooldown
+    assert e.status == 429 and 1 <= e.detail["retry_after"] <= config.EMAIL_CODE_COOLDOWN_SEC, e.detail
+assert config.EMAIL_CODE_COOLDOWN_SEC == 30
 wrong = "000000" if code != "000000" else "111111"
 expect(400, lambda: email_auth.register(F(**d, code=wrong), c))
 r = email_auth.register(F(**d, code=code), c)
@@ -55,4 +60,34 @@ for _ in range(5):
     expect(400, lambda: email_auth.register(F(**bd, code=bw), c))
 expect(429, lambda: email_auth.register(F(**bd, code=sent["bob@example.com"]), c))
 assert hasattr(auth, "login")
+
+# письмо не ушло: 503, код не остаётся в базе, повторный запрос сразу после сбоя не упирается в кулдаун
+def boom(to, code, purpose="register"): raise mail.MailDeliveryError("provider down")
+cd = dict(username="cat_1", password="secret123", email="cat@example.com")
+email_auth.send_login_code = boom
+expect(503, lambda: email_auth.send_code(S(**cd), c))
+assert c.execute("SELECT COUNT(*) n FROM email_codes WHERE email='cat@example.com'").fetchone()["n"] == 0
+email_auth.send_login_code = fake_send
+email_auth.send_code(S(**cd), c)
+assert (("cat@example.com", "register") in sent)
+
+# повторная отправка после кулдауна: прежний код перестаёт действовать, новый работает
+dd = dict(username="dan_1", password="secret123", email="dan@example.com")
+email_auth.send_code(S(**dd), c); first = sent["dan@example.com"]
+c.execute("UPDATE email_codes SET created_at = created_at - 100 WHERE email = 'dan@example.com'"); c.commit()
+email_auth.send_code(S(**dd), c); second = sent["dan@example.com"]
+if first != second: expect(400, lambda: email_auth.register(F(**dd, code=first), c))
+assert email_auth.register(F(**dd, code=second), c)["user"]["username"] == "dan_1"
+
+# восстановление пароля: нет такой почты — 404; код регистрации для сброса не годится; верный код меняет пароль
+RS = email_auth.ResetStart; RF = email_auth.ResetFinish
+expect(404, lambda: email_auth.send_reset_code(RS(email="nobody@example.com"), c))
+email_auth.send_reset_code(RS(email="ann@example.com"), c)
+rcode = sent[("ann@example.com", "reset")]
+expect(422, lambda: email_auth.reset_password(RF(email="ann@example.com", code=rcode, password="short"), c))
+wrong = "000000" if rcode != "000000" else "111111"
+expect(400, lambda: email_auth.reset_password(RF(email="ann@example.com", code=wrong, password="newsecret1"), c))
+r = email_auth.reset_password(RF(email="ann@example.com", code=rcode, password="newsecret1"), c)
+assert r["user"]["username"] == "ann_1" and r["token"]
+expect(400, lambda: email_auth.reset_password(RF(email="ann@example.com", code=rcode, password="newsecret1"), c))   # код одноразовый
 print("email auth OK")
