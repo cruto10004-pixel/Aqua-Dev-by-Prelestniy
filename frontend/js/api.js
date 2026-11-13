@@ -56,7 +56,9 @@ async function request(path, { method = 'GET', json, form, auth = true } = {}) {
 
 export const api = {
   login:        (username, password) => request('/auth/login', { method: 'POST', json: { username, password }, auth: false }),
-  registerCode: (d) => request('/auth/register/code', { method: 'POST', json: d, auth: false }),
+  registerBot:     () => request('/auth/register/bot', { method: 'GET', auth: false }),
+  registerPhone:   (phone) => request('/auth/register/phone', { method: 'POST', json: { phone }, auth: false }),
+  registerConfirm: (d) => request('/auth/register/code', { method: 'POST', json: d, auth: false }),
   register:     (d) => request('/auth/register', { method: 'POST', json: d, auth: false }),
   resetCode:    (username) => request('/auth/reset/code', { method: 'POST', json: { username }, auth: false }),
   resetPassword: (d) => request('/auth/reset', { method: 'POST', json: d, auth: false }),

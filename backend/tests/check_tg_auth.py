@@ -33,10 +33,9 @@ def fake_call(method, payload, timeout=30):
     return {"ok": True, "result": []}
 tg._call = fake_call
 
-def code_from(chat_id):
-    text = [t for cid, t in sent if cid == chat_id][-1]
-    return re.search(r"код для Aqua: (\d{6})", text).group(1)
-def ref_from(link): return link.split("start=")[1][2:]
+def last(chat_id): return [t for cid, t in sent if cid == chat_id][-1]
+def code_from(chat_id): return re.search(r"код для Aqua: (\d{6})", last(chat_id)).group(1)
+def number_from(chat_id): return re.search(r"\+7 \d{3} \d{3}-\d{2}-\d{2}", last(chat_id)).group(0)
 def expect(exc_type, fn):
     try: fn()
     except exc_type as e: return e
@@ -47,51 +46,54 @@ def ok(cond, msg):
     global fails
     print(("PASS " if cond else "FAIL ") + msg); fails += (not cond)
 
-# 1. Регистрация: ссылка с r_ и код приходит в чат после Start
-att = tg_auth.register_start(D(username="newbie", password="secret123"), c)
-ok(att["link"].startswith("https://t.me/aqua_test_bot?start=r_") and att["ref"] in att["link"], "регистрация: получена ссылка на бота")
-tg._handle({"message": {"chat": {"id": 555}, "text": "/start r_" + att["ref"]}})
-ok(re.fullmatch(r"\d{6}", code_from(555)) is not None, "бот по /start r_ прислал 6-значный код в чат")
+# 1. Бот выдаёт номер на /start; номер стабильный для чата и разный для разных чатов
+tg._handle({"message": {"chat": {"id": 555}, "text": "/start"}})
+num = number_from(555)
+tg._handle({"message": {"chat": {"id": 555}, "text": "/start"}})
+ok(number_from(555) == num, "бот выдаёт один и тот же номер этому чату")
+tg._handle({"message": {"chat": {"id": 666}, "text": "/start"}})
+ok(number_from(666) != num, "другой чат получает другой номер")
 
-# 2. Неверный код, затем верный → аккаунт привязан к чату
-e = expect(HTTPException, lambda: tg_auth.register(D(ref=att["ref"], code="000000"), c))
-ok(e.status == 400 and "Осталось попыток" in e.detail, "неверный код: 400 с остатком попыток")
-res = tg_auth.register(D(ref=att["ref"], code=code_from(555)), c)
+# 2. Номер в приложении → код в чат → верный код подтверждает номер
+digits = lambda n: re.sub(r"\D", "", n)
+att = tg_auth.register_phone(D(phone=num), c)
+ok(att["ref"] and att["link"] == "https://t.me/aqua_test_bot", "номер принят, в ответе ref и ссылка на бота")
+ok(re.fullmatch(r"\d{6}", code_from(555)) is not None, "код пришёл в чат этого номера")
+ok(expect(HTTPException, lambda: tg_auth.register_confirm(D(ref=att["ref"], code="000000"), c)).status == 400, "неверный код: 400")
+tg_auth.register_confirm(D(ref=att["ref"], code=code_from(555)), c)
+ok(c.execute("SELECT verified FROM tg_refs WHERE ref=?", (att["ref"],)).fetchone()["verified"] == 1, "верный код: номер подтверждён")
+
+# 3. Логин и пароль → аккаунт, привязанный к Telegram
+fin = tg_auth.register(D(ref=att["ref"], username="newbie", password="secret123"), c)
 u = c.execute("SELECT * FROM users WHERE username='newbie'").fetchone()
-ok(res["token"] and u and u["tg_chat_id"] == 555, "верный код: аккаунт создан, tg_chat_id=555")
-ok(expect(HTTPException, lambda: tg_auth.register(D(ref=att["ref"], code=code_from(555)), c)).status == 400, "попытка уже использована: повтор запрещён")
+ok(fin["token"] and u["tg_chat_id"] == 555, "логин и пароль: аккаунт создан, tg_chat_id=555")
+ok(expect(HTTPException, lambda: tg_auth.register(D(ref=att["ref"], username="again", password="secret123"), c)).status == 400, "попытка уже использована")
 
-# 3. Тот же Telegram не может завести второй аккаунт
-att2 = tg_auth.register_start(D(username="second", password="secret123"), c)
-tg._handle({"message": {"chat": {"id": 555}, "text": "/start r_" + att2["ref"]}})
-ok(expect(HTTPException, lambda: tg_auth.register(D(ref=att2["ref"], code=code_from(555)), c)).status == 409, "тот же Telegram уже привязан: 409")
+# 4. Тот же Telegram второй аккаунт не заведёт; неизвестный номер не принимается
+ok(expect(HTTPException, lambda: tg_auth.register_phone(D(phone=num), c)).status == 409, "тот же Telegram уже привязан: 409")
+ok(expect(HTTPException, lambda: tg_auth.register_phone(D(phone="79000000000"), c)).status == 404, "неизвестный номер: 404")
+att_b = tg_auth.register_phone(D(phone=number_from(666)), c)
+ok(att_b["ref"] != att["ref"], "второй чат получает свою попытку")
 
-# 4. Восстановление: код уходит только в чат владельца
+# 5. Логин и пароль без подтверждённого номера не принимаются
+ok(expect(HTTPException, lambda: tg_auth.register(D(ref=att_b["ref"], username="nope", password="secret123"), c)).status == 400, "без подтверждения номера аккаунт не создаётся")
+
+# 6. Брут-форс: 5 неверных → попытка сгорает
+for _ in range(5):
+    try: tg_auth.register_confirm(D(ref=att_b["ref"], code="111111"), c)
+    except HTTPException: pass
+ok(expect(HTTPException, lambda: tg_auth.register_confirm(D(ref=att_b["ref"], code=code_from(666)), c)).status == 429, "после 5 неверных вводов попытка сгорает: 429")
+
+# 7. Восстановление пароля: код только в чат владельца
 rs = tg_auth.reset_start(D(username="newbie"), c)
 tg._handle({"message": {"chat": {"id": 777}, "text": "/start x_" + rs["ref"]}})
 ok(not any(cid == 777 and "код для Aqua" in t for cid, t in sent), "чужой чат кода не получает")
 tg._handle({"message": {"chat": {"id": 555}, "text": "/start x_" + rs["ref"]}})
-rcode = code_from(555)
-out = tg_auth.reset_password(D(ref=rs["ref"], code=rcode, password="newpass99"), c)
+out = tg_auth.reset_password(D(ref=rs["ref"], code=code_from(555), password="newpass99"), c)
 ok(bool(out["token"]), "восстановление: пароль заменён, выдан токен")
-ok(expect(HTTPException, lambda: tg_auth.reset_start(D(username="second"), c)).status == 404, "без привязки к Telegram восстановить нельзя: 404")
 
-# 5. Брут-форс: 5 неверных → попытка сгорает
-att3 = tg_auth.register_start(D(username="brute", password="secret123"), c)
-tg._handle({"message": {"chat": {"id": 888}, "text": "/start r_" + att3["ref"]}})
-for _ in range(5):
-    try: tg_auth.register(D(ref=att3["ref"], code="111111"), c)
-    except HTTPException: pass
-ok(expect(HTTPException, lambda: tg_auth.register(D(ref=att3["ref"], code=code_from(888)), c)).status == 429, "после 5 неверных вводов попытка сгорает: 429")
-
-# 6. Просроченная ссылка
-att4 = tg_auth.register_start(D(username="late", password="secret123"), c)
-c.execute("UPDATE tg_refs SET expires_at=? WHERE ref=?", (time.time() - 1, att4["ref"])); c.commit()
-tg._handle({"message": {"chat": {"id": 999}, "text": "/start r_" + att4["ref"]}})
-ok("устарела" in [t for cid, t in sent if cid == 999][-1], "просроченная ссылка: бот отвечает, что устарела, кода нет")
-
-# 7. Бот не настроен → 503
+# 8. Бот не настроен → 503
 tg.enabled = lambda: False
-ok(expect(HTTPException, lambda: tg_auth.register_start(D(username="nobot", password="secret123"), c)).status == 503, "без токена бота регистрация недоступна: 503")
+ok(expect(HTTPException, lambda: tg_auth.register_phone(D(phone=num), c)).status == 503, "без токена бота вход по номеру недоступен: 503")
 
 print("ALL OK" if not fails else f"{fails} FAILED"); sys.exit(1 if fails else 0)

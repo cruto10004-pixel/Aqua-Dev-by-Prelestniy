@@ -4,6 +4,7 @@
 2) Пользователь открывает ссылку и нажимает Start → бот присылает код в чат.
 3) Фронтенд шлёт ref+код → аккаунт создан или пароль заменён. Чат записывается в users.tg_chat_id."""
 import hmac
+import re
 import secrets
 import sqlite3
 import time
@@ -21,14 +22,19 @@ router = APIRouter(prefix="/api/auth/register", tags=["auth"])
 reset_router = APIRouter(prefix="/api/auth/reset", tags=["auth"])
 
 
-class RegisterStart(BaseModel):
-    username: str = Field(max_length=64)
-    password: str = Field(max_length=256)
+class PhoneStart(BaseModel):
+    phone: str = Field(max_length=32)
+
+
+class PhoneCode(BaseModel):
+    ref: str = Field(max_length=64)
+    code: str = Field(max_length=12)
 
 
 class RegisterFinish(BaseModel):
     ref: str = Field(max_length=64)
-    code: str = Field(max_length=12)
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=256)
 
 
 class ResetStart(BaseModel):
@@ -47,11 +53,11 @@ def _new_attempt(conn: sqlite3.Connection, kind: str, **fields) -> dict:
     ref = secrets.token_urlsafe(12)
     now = time.time()
     conn.execute(
-        "INSERT INTO tg_refs (ref, kind, username, password_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO tg_refs (ref, kind, username, password_hash, user_id, chat_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (ref, kind, fields.get("username"), fields.get("password_hash"), fields.get("user_id"),
-         now, now + config.TG_REF_TTL_SEC))
+         fields.get("chat_id"), now, now + config.TG_REF_TTL_SEC))
     conn.commit()
-    return {"ref": ref, "link": tg.link_for(ref, kind), "ttl": config.TG_REF_TTL_SEC}
+    return {"ref": ref, "link": tg.link_for(ref) if kind == "reset" else tg.bot_link(), "ttl": config.TG_REF_TTL_SEC}
 
 
 def _check_code(conn: sqlite3.Connection, ref: str, kind: str, code: str):
@@ -73,29 +79,63 @@ def _mark_used(conn: sqlite3.Connection, ref: str) -> None:
     conn.commit()
 
 
+@router.get("/bot")
+def register_bot():
+    """Ссылка на бота: пользователь открывает её, чтобы получить номер."""
+    if not tg.enabled():
+        raise HTTPException(503, "Сейчас это недоступно: Telegram-бот не настроен.")
+    return {"link": tg.bot_link()}
+
+
+@router.post("/phone")
+def register_phone(data: PhoneStart, conn: sqlite3.Connection = Depends(get_db)):
+    """Шаг 1: номер, который выдал бот. Код отправляется в его Telegram-чат."""
+    if not tg.enabled():
+        raise HTTPException(503, "Сейчас это недоступно: Telegram-бот не настроен.")
+    digits = re.sub(r"\D", "", data.phone or "")
+    row = conn.execute("SELECT chat_id FROM tg_numbers WHERE number = ?", (digits,)).fetchone()
+    if len(digits) != 11 or not row:
+        raise HTTPException(404, "Такого номера нет. Откройте бота, нажмите Start и введите номер, который он выдаст.")
+    if conn.execute("SELECT 1 FROM users WHERE tg_chat_id = ?", (row["chat_id"],)).fetchone():
+        raise HTTPException(409, "На этот Telegram уже есть аккаунт. Войдите по логину.")
+    code = tg.new_code()
+    att = _new_attempt(conn, "phone", chat_id=row["chat_id"])
+    conn.execute("UPDATE tg_refs SET code_hash = ?, tries = 0 WHERE ref = ?", (tg.code_hash(att["ref"], code), att["ref"]))
+    conn.commit()
+    try:
+        tg.send_code(row["chat_id"], code)
+    except tg.TgError:
+        conn.execute("DELETE FROM tg_refs WHERE ref = ?", (att["ref"],)); conn.commit()
+        raise HTTPException(503, "Не удалось отправить код в Telegram. Попробуйте позже.")
+    return {"ref": att["ref"], "link": att["link"], "ttl": att["ttl"]}
+
+
 @router.post("/code")
-def register_start(data: RegisterStart, conn: sqlite3.Connection = Depends(get_db)):
-    """Шаг 1: проверяем логин и пароль, отдаём ссылку на бота."""
+def register_confirm(data: PhoneCode, conn: sqlite3.Connection = Depends(get_db)):
+    """Шаг 2: код из Telegram верный — номер подтверждён, можно выбрать логин и пароль."""
+    _check_code(conn, data.ref, "phone", (data.code or "").strip())
+    conn.execute("UPDATE tg_refs SET verified = 1, code_hash = NULL WHERE ref = ?", (data.ref,))
+    conn.commit()
+    return {"ref": data.ref, "ttl": config.TG_REF_TTL_SEC}
+
+
+@router.post("", status_code=201)
+def register(data: RegisterFinish, conn: sqlite3.Connection = Depends(get_db)):
+    """Шаг 3: логин и пароль — аккаунт создан, привязан к подтверждённому Telegram."""
+    row = conn.execute("SELECT * FROM tg_refs WHERE ref = ? AND kind = 'phone'", (data.ref,)).fetchone()
+    if not row or not row["verified"] or row["used"] or time.time() > row["expires_at"]:
+        raise HTTPException(400, "Сначала подтвердите номер. Начните заново.")
     username = data.username.strip()
     u_err, p_err = validate_username(username), validate_password(data.password)
     if u_err or p_err:
         raise HTTPException(422, detail={"message": "Проверьте введённые данные.", "username_errors": u_err, "password_errors": p_err})
     if conn.execute("SELECT 1 FROM users WHERE username = ? COLLATE NOCASE", (username,)).fetchone():
         raise HTTPException(409, "Это имя пользователя уже занято.")
-    return _new_attempt(conn, "register", username=username, password_hash=hash_password(data.password))
-
-
-@router.post("", status_code=201)
-def register(data: RegisterFinish, conn: sqlite3.Connection = Depends(get_db)):
-    """Шаг 2: код из бота верный — создаём аккаунт, привязанный к этому Telegram."""
-    row = _check_code(conn, data.ref, "register", (data.code or "").strip())
     if conn.execute("SELECT 1 FROM users WHERE tg_chat_id = ?", (row["chat_id"],)).fetchone():
-        raise HTTPException(409, "Этот Telegram уже привязан к аккаунту.")
-    if conn.execute("SELECT 1 FROM users WHERE username = ? COLLATE NOCASE", (row["username"],)).fetchone():
-        raise HTTPException(409, "Это имя пользователя уже занято.")
+        raise HTTPException(409, "На этот Telegram уже есть аккаунт.")
     cur = conn.execute(
         "INSERT INTO users (username, password_hash, created_at, tg_chat_id) VALUES (?, ?, ?, ?)",
-        (row["username"], row["password_hash"], now_iso(), row["chat_id"]))
+        (username, hash_password(data.password), now_iso(), row["chat_id"]))
     _mark_used(conn, data.ref)
     user = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
     return {"token": create_token(user["id"]), "token_type": "bearer", "user": serialize_user(user)}
@@ -110,7 +150,7 @@ def reset_start(data: ResetStart, conn: sqlite3.Connection = Depends(get_db)):
                         (data.username.strip(),)).fetchone()
     if not user or not user["tg_chat_id"]:
         raise HTTPException(404, "Аккаунт не найден или не привязан к Telegram.")
-    return _new_attempt(conn, "reset", user_id=user["id"])
+    return _new_attempt(conn, "reset", user_id=user["id"], chat_id=user["tg_chat_id"])
 
 
 @reset_router.post("")

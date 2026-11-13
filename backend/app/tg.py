@@ -8,6 +8,7 @@ import hmac
 import json
 import logging
 import secrets
+import sqlite3
 import threading
 import time
 import urllib.error
@@ -28,9 +29,32 @@ def enabled() -> bool:
     return bool(config.TG_BOT_TOKEN and config.TG_BOT_USERNAME)
 
 
-def link_for(ref: str, kind: str) -> str:
-    prefix = "r_" if kind == "register" else "x_"
-    return f"https://t.me/{config.TG_BOT_USERNAME}?start={prefix}{ref}"
+def bot_link() -> str:
+    return f"https://t.me/{config.TG_BOT_USERNAME}"
+
+
+def link_for(ref: str) -> str:
+    return f"https://t.me/{config.TG_BOT_USERNAME}?start=x_{ref}"
+
+
+def fmt_number(number: str) -> str:
+    return f"+{number[0]} {number[1:4]} {number[4:7]}-{number[7:9]}-{number[9:11]}"
+
+
+def number_for(conn, chat_id: int) -> str:
+    """Номер, который бот выдаёт этому чату. Создаётся один раз и не меняется."""
+    row = conn.execute("SELECT number FROM tg_numbers WHERE chat_id = ?", (chat_id,)).fetchone()
+    if row:
+        return row["number"]
+    while True:
+        number = "79" + "".join(secrets.choice("0123456789") for _ in range(9))
+        try:
+            conn.execute("INSERT INTO tg_numbers (number, chat_id, created_at) VALUES (?, ?, ?)",
+                         (number, chat_id, time.time()))
+            conn.commit()
+            return number
+        except sqlite3.IntegrityError:
+            continue
 
 
 def code_hash(ref: str, code: str) -> str:
@@ -57,21 +81,28 @@ def _send(chat_id: int, text: str) -> None:
     _call("sendMessage", {"chat_id": chat_id, "text": text}, timeout=15)
 
 
-def _start(conn, kind: str, ref: str, chat_id: int) -> None:
+def send_code(chat_id: int, code: str) -> None:
+    _send(chat_id, f"Ваш код для Aqua: {code}\n\nКод действует 15 минут. Никому его не сообщайте.")
+
+
+def new_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _start_reset(conn, ref: str, chat_id: int) -> None:
     row = conn.execute("SELECT * FROM tg_refs WHERE ref = ?", (ref,)).fetchone()
-    if not row or row["kind"] != kind or row["used"] or time.time() > row["expires_at"]:
+    if not row or row["kind"] != "reset" or row["used"] or time.time() > row["expires_at"]:
         _send(chat_id, "Ссылка устарела. Начните заново в приложении Aqua.")
         return
-    if kind == "reset":                                       # код восстановления — только в чат владельца аккаунта
-        owner = conn.execute("SELECT tg_chat_id FROM users WHERE id = ?", (row["user_id"],)).fetchone()
-        if not owner or owner["tg_chat_id"] != chat_id:
-            _send(chat_id, "Этот запрос создан для другого аккаунта.")
-            return
-    code = f"{secrets.randbelow(1_000_000):06d}"
+    owner = conn.execute("SELECT tg_chat_id FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+    if not owner or owner["tg_chat_id"] != chat_id:           # код восстановления — только в чат владельца
+        _send(chat_id, "Этот запрос создан для другого аккаунта.")
+        return
+    code = new_code()
     conn.execute("UPDATE tg_refs SET chat_id = ?, code_hash = ?, tries = 0 WHERE ref = ?",
                  (chat_id, code_hash(ref, code), ref))
     conn.commit()
-    _send(chat_id, f"Ваш код для Aqua: {code}\n\nКод действует 15 минут. Никому его не сообщайте.")
+    send_code(chat_id, code)
 
 
 def _handle(update: dict) -> None:
@@ -81,15 +112,17 @@ def _handle(update: dict) -> None:
         return
     text = (msg.get("text") or "").strip()
     if not text.startswith("/start"):
-        _send(chat_id, "Откройте ссылку из приложения Aqua, чтобы получить код.")
+        with connect() as conn:
+            _send(chat_id, f"Ваш номер для Aqua: {fmt_number(number_for(conn, chat_id))}\n\nВведите его в приложении.")
         return
     payload = text[len("/start"):].strip()
-    if payload[:2] in ("r_", "x_") and len(payload) > 2:
-        kind = "register" if payload[:2] == "r_" else "reset"
+    if payload.startswith("x_") and len(payload) > 2:       # восстановление пароля по ссылке из приложения
         with connect() as conn:
-            _start(conn, kind, payload[2:], chat_id)
-    else:
-        _send(chat_id, "Привет! Откройте ссылку из приложения Aqua, чтобы получить код.")
+            _start_reset(conn, payload[2:], chat_id)
+        return
+    with connect() as conn:                                  # регистрация: бот выдаёт номер
+        number = number_for(conn, chat_id)
+    _send(chat_id, f"Ваш номер для Aqua: {fmt_number(number)}\n\nЭто не настоящий номер. Введите его в приложении, и сюда придёт код.")
 
 
 def _poll_loop() -> None:

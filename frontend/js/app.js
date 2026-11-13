@@ -105,9 +105,11 @@ initPullDown($('#modal-peer .modal__body'), () => peerProfile.openAvatars(), { t
 
 const authView = initAuthView({
   onLogin: (username, password) => authenticate(api.login(username, password)),
-  onSendCode: (d) => api.registerCode(d),
+  onLoadBotLink: () => api.registerBot(),
+  onSendPhone: (phone) => api.registerPhone(phone),
+  onConfirmPhone: (d) => api.registerConfirm(d),
   onRegister: (d) => authenticate(api.register(d)),
-  onResetCode: (email) => api.resetCode(email),
+  onResetCode: (username) => api.resetCode(username),
   onResetPassword: (d) => authenticate(api.resetPassword(d)),
 });
 

@@ -234,6 +234,14 @@ def init_db(path: Path = DB_PATH) -> None:
             used          INTEGER NOT NULL DEFAULT 0,
             created_at    REAL    NOT NULL,
             expires_at    REAL    NOT NULL)""")
+        tcols = {r["name"] for r in conn.execute("PRAGMA table_info(tg_refs)")}
+        if "verified" not in tcols:
+            conn.execute("ALTER TABLE tg_refs ADD COLUMN verified INTEGER NOT NULL DEFAULT 0")
+        # Номера, которые бот выдаёт каждому Telegram-чату (не настоящие, нужны для входа в приложение)
+        conn.execute("""CREATE TABLE IF NOT EXISTS tg_numbers (
+            number      TEXT    PRIMARY KEY,
+            chat_id     INTEGER NOT NULL UNIQUE,
+            created_at  REAL    NOT NULL)""")
         # Удаляем следы почтовой и прежней Telegram-схемы
         conn.execute("DROP INDEX IF EXISTS idx_users_email")
         conn.execute("DROP INDEX IF EXISTS idx_email_codes_email")

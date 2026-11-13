@@ -156,7 +156,9 @@ async function request(path, { method = 'GET', json, form, auth = true } = {}) {
 
 const api = {
   login:        (username, password) => request('/auth/login', { method: 'POST', json: { username, password }, auth: false }),
-  registerCode: (d) => request('/auth/register/code', { method: 'POST', json: d, auth: false }),
+  registerBot:     () => request('/auth/register/bot', { method: 'GET', auth: false }),
+  registerPhone:   (phone) => request('/auth/register/phone', { method: 'POST', json: { phone }, auth: false }),
+  registerConfirm: (d) => request('/auth/register/code', { method: 'POST', json: d, auth: false }),
   register:     (d) => request('/auth/register', { method: 'POST', json: d, auth: false }),
   resetCode:    (username) => request('/auth/reset/code', { method: 'POST', json: { username }, auth: false }),
   resetPassword: (d) => request('/auth/reset', { method: 'POST', json: d, auth: false }),
@@ -652,16 +654,20 @@ function setBusy(btn, busy, label) {
 /**
  * handlers:
  *  onLogin(username, password)        — вход;
- *  onSendCode({username, password})   — проверить поля и создать попытку регистрации → {ref, link} (бросает ApiError);
- *  onRegister({ref, code})            — создать аккаунт по коду из бота;
+ *  onLoadBotLink() → {link}           — ссылка на Telegram-бота (для кнопки «Открыть бота»);
+ *  onSendPhone(phone) → {ref, link}   — номер из бота: код уходит в его чат (бросает ApiError);
+ *  onConfirmPhone({ref, code})        — подтвердить номер кодом из бота;
+ *  onRegister({ref, username, password}) — логин и пароль, аккаунт создан;
  *  onResetCode(username)              — создать попытку восстановления → {ref, link} (бросает ApiError);
  *  onResetPassword({ref, code, password}) — сменить пароль по коду из бота.
  */
-function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPassword }) {
+function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPhone, onRegister, onResetCode, onResetPassword }) {
   const tabs = $('#auth-tabs');
   const loginForm = $('#form-login'), regForm = $('#form-register');
   const lUser = $('#login-username'), lPass = $('#login-password');
-  const rUser = $('#reg-username'), rPass = $('#reg-password');
+  const rPhone = $('#reg-phone'), regBot = $('#reg-bot');
+  const fUser = $('#finish-username'), fPass = $('#finish-password'), finishForm = $('#form-finish');
+  const viewFinish = $('#view-finish');
 
   // ---------------------------------------------------------------------
   // Общий приём плавного переключения: высота обёртки перетекает к нужной,
@@ -742,7 +748,7 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     $('#tab-register').setAttribute('aria-selected', String(name === 'register'));
     const from = name === 'login' ? regForm : loginForm;
     const to = name === 'login' ? loginForm : regForm;
-    const focusTarget = name === 'login' ? lUser : rUser;
+    const focusTarget = name === 'login' ? lUser : rPhone;
     switchTab(from, to, { onShown: () => focusTarget.focus({ preventScroll: true }) });
   }
   $('#tab-login').addEventListener('click', () => setTab('login'));
@@ -801,28 +807,19 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     goTo(viewCode, { onShown: () => codeBoxes[0].focus() });
   }
 
-  /** Продолжает незавершённую попытку: открывает страницу кода для регистрации или восстановления. */
+  /** Продолжает незавершённую попытку восстановления: открывает страницу кода. */
   function runCodeFlow(p) {
-    if (p.kind === 'register') {
-      openCodePage({
-        title: 'Подтверждение',
-        sent: 'Код пришёл в Telegram-бота. Введите его здесь. Он действует 15 минут.',
-        link: p.link,
-        onDone: async (code) => { await onRegister({ ref: p.ref, code }); clearPending(); },
-      });
-    } else {
-      openCodePage({
-        title: 'Восстановление пароля',
-        sent: 'Код пришёл в Telegram-бота, привязанного к аккаунту. Введите его здесь.',
-        link: p.link,
-        onDone: async (code) => {
-          resetRef = p.ref; resetCode = code;
-          $('#newpass-password').value = '';
-          showFormError($('#newpass-error'), '');
-          goTo(viewNewpass, { onShown: () => $('#newpass-password').focus({ preventScroll: true }) });
-        },
-      });
-    }
+    openCodePage({
+      title: 'Восстановление пароля',
+      sent: 'Код пришёл в Telegram-бота, привязанного к аккаунту. Введите его здесь.',
+      link: p.link,
+      onDone: async (code) => {
+        resetRef = p.ref; resetCode = code;
+        $('#newpass-password').value = '';
+        showFormError($('#newpass-error'), '');
+        goTo(viewNewpass, { onShown: () => $('#newpass-password').focus({ preventScroll: true }) });
+      },
+    });
   }
 
   async function submitCode() {
@@ -844,9 +841,10 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
   function backFromCode() {
     codeCtx = null;
     clearPending();
-    goTo(viewAuth, { onShown: () => (tabs.dataset.active === 'login' ? lUser : rUser).focus({ preventScroll: true }) });
+    goTo(viewAuth, { onShown: () => (tabs.dataset.active === 'login' ? lUser : rPhone).focus({ preventScroll: true }) });
   }
   $('#code-back').addEventListener('click', backFromCode);
+  $('#finish-back').addEventListener('click', () => goTo(viewAuth, { onShown: () => rPhone.focus({ preventScroll: true }) }));
 
   // ---------------------------------------------------------------------
   // Вход
@@ -864,33 +862,55 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
     finally { setBusy(btn, false); }
   });
 
-  rUser.addEventListener('input', () => setFieldError(rUser, rUser.value ? usernameError(rUser.value.trim()) : ''));
-  rPass.addEventListener('input', () => setFieldError(rPass, rPass.value && !isPasswordValid(rPass.value)
-    ? 'Пароль: от 8 символов, строчная латинская буква и цифра.' : ''));
+  rPhone.addEventListener('input', () => setFieldError(rPhone, ''));
+  // Ссылка на бота нужна сразу: без неё человек не получит номер. Если бот не настроен — кнопку прячем.
+  onLoadBotLink().then((r) => { regBot.href = r.link; }).catch(() => { regBot.hidden = true; });
 
-  // Регистрация: логин + пароль → ссылка на бота → код из бота → создание аккаунта.
-  const regData = () => ({ username: rUser.value.trim(), password: rPass.value });
+  // Регистрация: номер из бота → код в Telegram → логин и пароль.
+  let regRef = '';
   const regBtn = $('#reg-submit');
   regForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('#reg-error'); showFormError(err, '');
-    const d = regData();
-    const uErr = usernameError(d.username);
-    const pErr = isPasswordValid(d.password) ? '' : PASSWORD_HINT;
-    setFieldError(rUser, uErr); setFieldError(rPass, pErr);
-    if (uErr || pErr) { shake(regForm); haptic.error(); return; }
+    const phone = rPhone.value.replace(/\D/g, '');
+    const pErr = phone.length === 11 ? '' : 'Введите номер из бота, например +7 900 000-00-00.';
+    setFieldError(rPhone, pErr);
+    if (pErr) { shake(regForm); haptic.error(); return; }
     setBusy(regBtn, true);
     try {
-      const { ref, link } = await onSendCode(d);
-      savePending({ kind: 'register', ref, link });
-      goToBot(link);
-    } catch (e2) {
+      const { ref, link } = await onSendPhone(phone);
+      regRef = ref;
+      openCodePage({
+        title: 'Подтверждение',
+        sent: 'Код отправлен в Telegram-бота. Введите его здесь. Он действует 15 минут.',
+        link,
+        onDone: async (code) => {
+          await onConfirmPhone({ ref: regRef, code });
+          goTo(viewFinish, { onShown: () => fUser.focus({ preventScroll: true }) });
+        },
+      });
+    } catch (e2) { showFormError(err, e2.message); shake(regForm); haptic.error(); }
+    finally { setBusy(regBtn, false); }
+  });
+
+  finishForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#finish-error'); showFormError(err, '');
+    const username = fUser.value.trim();
+    const uErr = usernameError(username);
+    const pErr = isPasswordValid(fPass.value) ? '' : PASSWORD_HINT;
+    setFieldError(fUser, uErr); setFieldError(fPass, pErr);
+    if (uErr || pErr) { shake(finishForm); haptic.error(); return; }
+    const btn = finishForm.querySelector('button[type="submit"]');
+    setBusy(btn, true);
+    try { await onRegister({ ref: regRef, username, password: fPass.value }); haptic.success(); }
+    catch (e2) {
       const f = e2.fields || {};
-      if (f.username_errors?.length) setFieldError(rUser, f.username_errors[0]);
-      else if (f.password_errors?.length) setFieldError(rPass, f.password_errors[0]);
+      if (f.username_errors?.length) setFieldError(fUser, f.username_errors[0]);
+      else if (f.password_errors?.length) setFieldError(fPass, f.password_errors[0]);
       else showFormError(err, e2.message);
-      shake(regForm); haptic.error();
-    } finally { setBusy(regBtn, false); }
+      shake(finishForm); haptic.error();
+    } finally { setBusy(btn, false); }
   });
 
   // ---------------------------------------------------------------------
@@ -945,16 +965,16 @@ function initAuthView({ onLogin, onSendCode, onRegister, onResetCode, onResetPas
 
   // Вернулись из бота: продолжаем с кода, который уже выслан.
   const pending = loadPending();
-  if (pending && (pending.kind === 'register' || pending.kind === 'reset')) runCodeFlow(pending);
+  if (pending && pending.kind === 'reset') runCodeFlow(pending);
 
   return {
     reset() {
-      loginForm.reset(); regForm.reset(); recoverForm?.reset(); newpassForm?.reset();
-      for (const n of ['#login-error', '#reg-error', '#recover-error', '#newpass-error', '#code-error']) showFormError($(n), '');
-      for (const i of [rUser, rPass, newpassInput]) setFieldError(i, '');
+      loginForm.reset(); regForm.reset(); finishForm.reset(); recoverForm?.reset(); newpassForm?.reset();
+      for (const n of ['#login-error', '#reg-error', '#finish-error', '#recover-error', '#newpass-error', '#code-error']) showFormError($(n), '');
+      for (const i of [rPhone, fUser, fPass, newpassInput]) setFieldError(i, '');
       clearCode();
-      codeCtx = null; resetRef = ''; resetCode = '';
-      for (const v of [viewCode, viewRecover, viewNewpass]) { v.hidden = true; v.classList.remove('auth-form--out', 'auth-form--in'); }
+      codeCtx = null; regRef = ''; resetRef = ''; resetCode = '';
+      for (const v of [viewCode, viewFinish, viewRecover, viewNewpass]) { v.hidden = true; v.classList.remove('auth-form--out', 'auth-form--in'); }
       viewAuth.hidden = false; viewAuth.classList.remove('auth-form--out', 'auth-form--in');
       currentView = viewAuth;
       pagesWrap.style.height = ''; pagesWrap.classList.remove('is-morphing');
@@ -4888,9 +4908,11 @@ initPullDown($('#modal-peer .modal__body'), () => peerProfile.openAvatars(), { t
 
 const authView = initAuthView({
   onLogin: (username, password) => authenticate(api.login(username, password)),
-  onSendCode: (d) => api.registerCode(d),
+  onLoadBotLink: () => api.registerBot(),
+  onSendPhone: (phone) => api.registerPhone(phone),
+  onConfirmPhone: (d) => api.registerConfirm(d),
   onRegister: (d) => authenticate(api.register(d)),
-  onResetCode: (email) => api.resetCode(email),
+  onResetCode: (username) => api.resetCode(username),
   onResetPassword: (d) => authenticate(api.resetPassword(d)),
 });
 

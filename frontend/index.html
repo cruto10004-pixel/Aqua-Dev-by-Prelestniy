@@ -231,19 +231,16 @@
         </form>
 
         <!-- Регистрация: логин и пароль — код приходит в Telegram-бот по ссылке, вводится на отдельной странице -->
+        <!-- Регистрация, шаг 1: номер, который выдаёт Telegram-бот; код придёт в тот же чат -->
         <form id="form-register" novalidate hidden>
           <div class="form-error" id="reg-error" role="alert" hidden></div>
           <div class="field">
-            <label class="field__label" for="reg-username">Логин</label>
-            <input class="input" id="reg-username" name="username" type="text" autocomplete="username"
-                   autocapitalize="none" autocorrect="off" spellcheck="false" required>
-            <p class="field__error" id="reg-username-error"></p>
+            <label class="field__label" for="reg-phone">Номер из бота</label>
+            <input class="input" id="reg-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" required>
+            <p class="field__error" id="reg-phone-error"></p>
+            <p class="auth__hint">Откройте бота, нажмите Start и введите выданный номер. Код придёт туда же.</p>
           </div>
-          <div class="field">
-            <label class="field__label" for="reg-password">Пароль</label>
-            <input class="input" id="reg-password" name="password" type="password" autocomplete="new-password" required>
-            <p class="field__error" id="reg-password-error"></p>
-          </div>
+          <a class="btn btn--ghost btn--block" id="reg-bot" href="#" target="_blank" rel="noopener">Открыть бота в Telegram</a>
           <button class="btn btn--primary btn--block" type="submit" id="reg-submit">Получить код</button>
         </form>
         </div>
@@ -267,6 +264,30 @@
         </div>
         <p class="form-error" id="code-error" role="alert" hidden></p>
         <button class="btn btn--primary btn--block" type="button" id="code-submit" disabled>Подтвердить</button>
+      </section>
+
+      <!-- ---------- Регистрация, шаг 3: логин и пароль ---------- -->
+      <section class="auth-view" id="view-finish" data-view="finish" hidden>
+        <button class="auth__back" type="button" id="finish-back" aria-label="Назад">
+          <svg class="icon"><use href="#i-forward"/></svg>
+        </button>
+        <h2 class="auth__view-title">Логин и пароль</h2>
+        <p class="auth__hint">Номер подтверждён. Придумайте логин, по нему вы будете входить.</p>
+        <form id="form-finish" novalidate>
+          <div class="form-error" id="finish-error" role="alert" hidden></div>
+          <div class="field">
+            <label class="field__label" for="finish-username">Логин</label>
+            <input class="input" id="finish-username" name="username" type="text" autocomplete="username"
+                   autocapitalize="none" autocorrect="off" spellcheck="false" required>
+            <p class="field__error" id="finish-username-error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="finish-password">Пароль</label>
+            <input class="input" id="finish-password" name="password" type="password" autocomplete="new-password" required>
+            <p class="field__error" id="finish-password-error"></p>
+          </div>
+          <button class="btn btn--primary btn--block" type="submit">Создать аккаунт</button>
+        </form>
       </section>
 
       <!-- ---------- Восстановление, шаг 1: логин ---------- -->

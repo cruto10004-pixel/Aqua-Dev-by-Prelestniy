@@ -96,15 +96,23 @@ async function setup(browser, ctxOpts = {}, opts = {}) {
       return d.password === 'secret123' ? json(200, { token: 'tok', token_type: 'bearer', user: be.me })
         : json(401, { detail: 'Неверное имя пользователя или пароль.' });
     }
-    if (path === '/auth/register/code' || path === '/auth/reset/code') {   // be.codeMode: 'ok' | 'fail'
-      if (be.codeMode === 'fail') return json(503, { detail: 'Сейчас это недоступно: Telegram-бот не настроен.' });
-      const kind = path.endsWith('/reset/code') ? 'x' : 'r';
-      return json(200, { ref: kind + '1', link: 'https://t.me/aqua_test_bot?start=' + kind + '_' + kind + '1', ttl: 900 });
+    if (path === '/auth/register/bot') return json(200, { link: 'https://t.me/aqua_test_bot' });
+    if (path === '/auth/register/phone') {                    // номер из бота 79001234567; be.codeMode 'fail' — бот не знает номер
+      const d = req.postDataJSON();
+      if (be.codeMode === 'fail' || d.phone.replace(/\D/g, '') !== '79001234567')
+        return json(404, { detail: 'Такого номера нет. Откройте бота, нажмите Start и введите номер, который он выдаст.' });
+      return json(200, { ref: 'p1', link: 'https://t.me/aqua_test_bot', ttl: 900 });
     }
+    if (path === '/auth/register/code') {
+      const d = req.postDataJSON();
+      return d.code === '123456' ? json(200, { ref: 'p1', ttl: 900 })
+        : json(400, { detail: 'Неверный код. Осталось попыток: 4.' });
+    }
+    if (path === '/auth/reset/code') return json(200, { ref: 'x1', link: 'https://t.me/aqua_test_bot?start=x_x1', ttl: 900 });
     if (path === '/auth/register') {
       const d = req.postDataJSON();
-      return d.code === '123456' ? json(201, { token: 'tok', token_type: 'bearer', user: be.me })
-        : json(400, { detail: 'Неверный код. Осталось попыток: 4.' });
+      return d.ref === 'p1' ? json(201, { token: 'tok', token_type: 'bearer', user: be.me })
+        : json(400, { detail: 'Сначала подтвердите номер. Начните заново.' });
     }
     if (path === '/auth/reset') {
       const d = req.postDataJSON();
