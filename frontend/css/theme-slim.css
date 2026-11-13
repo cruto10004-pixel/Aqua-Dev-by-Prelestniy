@@ -1,0 +1,102 @@
+/* Тема «Slim Dark» (Бета 4). Подключать ПОСЛЕДНЕЙ. */
+:root {
+  color-scheme: dark;
+  --slim-bg: #0F1013; --slim-surface: #1A1B20; --slim-surface-2: #23242B;
+  --slim-surface-3: #2E3038; --slim-line: #2A2C33; --slim-text: #E7E8EF;
+  --slim-muted: #9A9DAB; --slim-accent: #B8C4FF; --slim-blue: #34508F; --slim-mic: #5B3A57;
+  --aqua-50: var(--slim-surface); --aqua-100: var(--slim-surface-2);
+  --aqua-200: var(--slim-surface-3); --aqua-300: #3A3D47;
+  --aqua-deep: var(--slim-text); --aqua-navy: var(--slim-accent);
+  --aqua-teal: var(--slim-accent); --aqua-teal-600: #7C8CE0;
+  --color-bg: var(--slim-bg); --color-surface: var(--slim-bg);
+  --color-surface-alt: var(--slim-surface); --color-border: var(--slim-line);
+  --color-text: var(--slim-text); --color-text-muted: var(--slim-muted);
+  --color-primary: var(--slim-accent); --color-accent: var(--slim-accent);
+  --color-focus: rgba(184,196,255,.25);
+  --bubble-in-bg: #24252C; --bubble-in-text: var(--slim-text);
+  --bubble-out-bg: #34406B; --bubble-out-text: #fff;
+  --radius-md: 1.1rem; --radius-lg: 1.6rem;
+  --shadow-sm: none; --shadow-md: 0 6px 20px rgba(0,0,0,.45); --shadow-lg: 0 20px 50px rgba(0,0,0,.6);
+  --font: "Nunito", "Segoe UI", Roboto, system-ui, sans-serif;
+}
+body { background: var(--slim-bg); color: var(--slim-text); }
+
+/* Кнопки и поля */
+.btn--primary { background: var(--slim-blue); color: #fff; box-shadow: none; }
+.btn--ghost { background: var(--slim-surface-2); color: var(--slim-text); }
+.btn-icon { background: var(--slim-surface-2); color: var(--slim-text); }
+.btn-icon--send { background: var(--slim-blue); box-shadow: none; }
+.btn-icon--voice { background: var(--slim-mic); }
+.input, .composer__input, .dialog__input, .picker__search { background: var(--slim-surface); border-color: transparent; color: var(--slim-text); }
+.input:focus, .composer__input:focus { background: var(--slim-surface-2); border-color: var(--slim-accent); box-shadow: none; }
+.search .input { border: 1px solid var(--slim-line); min-height: 3rem; }
+
+/* Список чатов */
+.sidebar { background: var(--slim-bg); }
+.sidebar__brand span { font-size: 1.9rem; font-weight: 800; color: var(--slim-accent); }
+.sidebar__header .btn-icon { width: 2.9rem; height: 2.9rem; border-radius: .9rem; background: var(--slim-blue); color: #fff; }
+.sidebar__list { padding-inline: .6rem; }
+.chat-item { background: var(--slim-surface); border-radius: .5rem; margin-bottom: .15rem; padding: .7rem .8rem; }
+.chat-item:hover { background: var(--slim-surface-2); }
+.chat-item.is-active, .chat-item:active { background: var(--slim-surface-3); }
+.chat-item__name { font-weight: 700; }
+.badge { background: var(--slim-accent); color: #1A1B20; }
+.list-heading { text-transform: none; letter-spacing: 0; font-size: .85rem; color: var(--slim-accent); }
+.avatar { background: hsl(var(--hue) 45% 72%); color: #1A1B20; }
+.avatar__dot { border-color: var(--slim-bg); }
+
+/* Нижнее меню */
+.nav { left: .75rem; right: .75rem; padding: .3rem; gap: .1rem; background: #0A0A0D; border: 1px solid #1F2026; }
+.nav__item { flex: 1; flex-direction: row; justify-content: center; gap: .4rem; padding: .55rem .7rem; font-size: 0; color: var(--slim-text); }
+.nav__item.is-active { flex: 1.8; background: var(--slim-surface-3); font-size: .85rem; color: #fff; }
+
+/* Переписка */
+.chat { background: var(--slim-bg); }
+.chat__header { background: color-mix(in srgb, var(--slim-bg) 85%, transparent); box-shadow: none; }
+.chat__header .btn-icon { border-radius: 1.4rem; }
+.peer__name { font-weight: 800; }
+.chat__messages { background: var(--chat-wallpaper, var(--slim-bg)); background-size: cover; }
+.day-sep { background: rgba(20,21,26,.75); color: var(--slim-text); box-shadow: none; }
+.msg__bubble { box-shadow: none; }
+.edit-bar { background: var(--slim-surface); border-left-color: var(--slim-accent); }
+.chat__composer { background: var(--slim-bg); box-shadow: none; }
+.composer { align-items: center; gap: .35rem; }
+.composer__input { border-radius: 1.6rem; }
+
+/* Смайлики / стикеры */
+.picker { background: var(--slim-bg); border: 0; box-shadow: none; }
+.picker__tabs { border: 0; background: var(--slim-surface); border-radius: 1.4rem; margin: .3rem; padding: .25rem; }
+.picker__tab { flex: 1; }
+.picker__tab.is-active { background: #D9DEFF; color: #1A1B20; }
+.picker__packs { border-top: 0; }
+.picker__sticker--add { border: 0; background: var(--slim-surface); border-radius: 1rem; color: var(--slim-text); }
+
+/* Меню и окна */
+.menu, .peer-menu, .dialog__card, .sticker-preview__card { background: var(--slim-surface); border-color: var(--slim-line); }
+.menu__action { color: var(--slim-text); }
+.modal__backdrop { background: rgba(0,0,0,.6); }
+.modal__dialog { background: var(--slim-bg); }
+.modal__title { color: var(--slim-text); font-weight: 800; }
+.toast { background: var(--slim-surface-3); }
+
+/* Профиль */
+.profile .avatar--xl { width: 8rem; height: 8rem; }
+.profile__tiles { grid-template-columns: repeat(2, 1fr); gap: .3rem; }
+.profile__tile { flex-direction: row; padding: .8rem; border-radius: 1.4rem; background: var(--slim-surface-2); color: var(--slim-text); font-size: .9rem; }
+.profile__info { background: transparent; border: 0; display: grid; gap: .9rem; }
+.profile__row { padding: 0; border: 0 !important; }
+.profile__label { font-size: 1rem; font-weight: 700; color: var(--slim-accent); margin-bottom: .4rem; }
+.profile__row .profile__bio, .profile__row .profile__login { display: block; padding: .8rem 1rem; border-radius: 1rem; background: var(--slim-surface); color: var(--slim-text); }
+
+/* Настройки */
+.prefs__section + .prefs__section { border-top: 0; }
+.prefs__title { text-transform: none; letter-spacing: 0; color: var(--slim-text); }
+.prefs__nav { padding: .9rem 1rem; margin-bottom: .2rem; border: 0; border-radius: .5rem; background: var(--slim-surface); font-weight: 700; }
+.prefs__nav:first-of-type { border-radius: 1.3rem 1.3rem .5rem .5rem; }
+.prefs__nav:last-of-type { border-radius: .5rem .5rem 1.3rem 1.3rem; }
+.prefs__nav:hover { background: var(--slim-surface-2); }
+.prefs__details { background: var(--slim-surface); border: 0; border-radius: 1.3rem; }
+.prefs__details > summary { color: var(--slim-text); }
+
+/* Контакты */
+.contacts__row { background: var(--slim-surface); margin-bottom: .15rem; padding: .7rem .8rem; border-radius: .5rem; }
