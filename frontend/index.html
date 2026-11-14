@@ -18,7 +18,9 @@
   <link rel="stylesheet" href="css/editor.css">
   <link rel="stylesheet" href="css/polish.css">
   <link rel="stylesheet" href="css/theme-slim.css">
+  <link rel="preload" href="assets/Manrope-Variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="css/aqua.css?v=auth-4">
+  <link rel="stylesheet" href="css/prototype.css?v=1">
 </head>
 <body>
 
@@ -188,7 +190,7 @@
 <!-- Заставка при входе (assets/start.webm). Видна сразу, скрывается ui/splash.js.
      Запасной таймер ниже убирает её, даже если модули не загрузились. -->
 <div class="splash" id="splash">
-  <video id="splash-video" muted playsinline autoplay preload="auto" disablepictureinpicture src="assets/start.webm"></video>
+  <img class="splash__brand" src="assets/icon-192.png" width="64" height="64" alt="Aqua">
 </div>
 <script src="js/splash-failsafe.js"></script>
 
@@ -197,6 +199,11 @@
 
   <!-- ====================== Экран входа / регистрации ====================== -->
   <main class="auth" id="screen-auth">
+    <section class="auth-art" aria-label="Aqua">
+      <div class="auth-art__brand"><img src="assets/icon-64.png" alt="" width="44" height="44">Aqua</div>
+      <div><h2>Ближе.<br>Даже на<br>расстоянии.</h2><p>Ваши люди, важные слова и маленькие моменты. Всё в одном пространстве.</p></div>
+      <span>AQUA MESSENGER</span>
+    </section>
     <div class="auth__card">
       <header class="auth__brand">
         <img class="auth__logo" src="assets/icon-192.png" width="80" height="80" alt="">
@@ -698,6 +705,6 @@
 
 <!-- ES-модули: открывать через сервер (http://127.0.0.1:8000), не через file:// -->
 <script src="js/boot-check.js"></script>
-<script src="js/bundle.js?v=auth-4"></script>
+<script src="js/bundle.js?v=prototype-1"></script>
 </body>
 </html>

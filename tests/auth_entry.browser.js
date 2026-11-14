@@ -15,7 +15,9 @@
   });
   assert($('#app').dataset.screen === 'auth', 'Sign out before running this check');
   assert(getComputedStyle($('.auth')).backgroundImage === 'none', 'Old gradient must be removed');
-  assert(getComputedStyle($('.auth__card')).backgroundColor === 'rgb(28, 39, 62)', 'Navy card must be applied');
+  assert(getComputedStyle($('.auth__card')).backgroundColor === 'rgba(0, 0, 0, 0)', 'Prototype form must not have a card background');
+  await document.fonts.load('600 14px Manrope', 'Привет Aqua');
+  assert([...document.fonts].some(f => f.family === 'Manrope' && f.status === 'loaded'), 'Manrope must actually load');
   for (let i = 0; i < 3; i++) {
     $('#tab-register').click(); await settled();
     assert(!$('#form-register').hidden, 'Registration must be visible');

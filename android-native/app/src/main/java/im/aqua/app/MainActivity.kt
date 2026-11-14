@@ -42,8 +42,14 @@ class MainActivity: ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen(); super.onCreate(savedInstanceState)
         setContent {
-            val font=FontFamily(Font(R.font.manrope))
-            val typography=Typography().let { it.copy(bodyLarge=it.bodyLarge.copy(fontFamily=font), bodyMedium=it.bodyMedium.copy(fontFamily=font), titleLarge=it.titleLarge.copy(fontFamily=font), titleMedium=it.titleMedium.copy(fontFamily=font), labelLarge=it.labelLarge.copy(fontFamily=font)) }
+            val font=FontFamily(Font(R.font.manrope_400,FontWeight.Normal),Font(R.font.manrope_500,FontWeight.Medium),Font(R.font.manrope_600,FontWeight.SemiBold),Font(R.font.manrope_700,FontWeight.Bold))
+            val typography=Typography().let { it.copy(
+                displayLarge=it.displayLarge.copy(fontFamily=font),displayMedium=it.displayMedium.copy(fontFamily=font),displaySmall=it.displaySmall.copy(fontFamily=font),
+                headlineLarge=it.headlineLarge.copy(fontFamily=font),headlineMedium=it.headlineMedium.copy(fontFamily=font),headlineSmall=it.headlineSmall.copy(fontFamily=font),
+                titleLarge=it.titleLarge.copy(fontFamily=font),titleMedium=it.titleMedium.copy(fontFamily=font),titleSmall=it.titleSmall.copy(fontFamily=font),
+                bodyLarge=it.bodyLarge.copy(fontFamily=font),bodyMedium=it.bodyMedium.copy(fontFamily=font),bodySmall=it.bodySmall.copy(fontFamily=font),
+                labelLarge=it.labelLarge.copy(fontFamily=font),labelMedium=it.labelMedium.copy(fontFamily=font),labelSmall=it.labelSmall.copy(fontFamily=font)) }
+
             MaterialTheme(colorScheme=darkColorScheme(primary=Accent,background=Navy,surface=Navy,surfaceVariant=Surface,onSurface=Color(0xffedf2ff)),typography=typography) {
                 Aqua(viewModel())
             }
@@ -125,7 +131,7 @@ class MainActivity: ComponentActivity() {
         Image(painterResource(R.drawable.aqua),"Aqua",Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)))
         Text("Aqua",fontSize=30.sp,fontWeight=FontWeight.Bold)
         Text("Ближе, даже на расстоянии",color=Color(0xffaab8d2),fontSize=13.sp)
-        Column(Modifier.widthIn(max=420.dp).fillMaxWidth().background(Color(0xff1c273e),RoundedCornerShape(24.dp)).padding(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.widthIn(max=420.dp).fillMaxWidth().animateContentSize(tween(360)).padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
             if(mode=="login" || mode=="phone") Row(Modifier.fillMaxWidth().background(Navy,RoundedCornerShape(16.dp)).padding(4.dp)) {
                 listOf("login" to "Вход","phone" to "Регистрация").forEach { (value,label) ->
                     TextButton(onClick={switchMode(value)},enabled=!m.busy,modifier=Modifier.weight(1f).background(if(mode==value)Color(0xff3a4c73) else Color.Transparent,RoundedCornerShape(12.dp))){Text(label,color=if(mode==value)Color.White else Color(0xffaab8d2))}
@@ -218,7 +224,7 @@ class MainActivity: ComponentActivity() {
         item { TextButton(onClick={m.older()},enabled=!m.busy){Text("Загрузить предыдущие") } }
         items(m.messages,key={it.getInt("id")}) { msg ->
             val mine=msg.optJSONObject("sender")?.optInt("id")==m.user!!.getInt("id")
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=if(mine)Arrangement.End else Arrangement.Start) {
+            Row(Modifier.animateItem().fillMaxWidth(),horizontalArrangement=if(mine)Arrangement.End else Arrangement.Start) {
                 Column(Modifier.clickable{actionMessage=msg;edited=msg.optString("text")}.widthIn(max=310.dp).clip(RoundedCornerShape(topStart=18.dp,topEnd=18.dp,bottomStart=if(mine)18.dp else 5.dp,bottomEnd=if(mine)5.dp else 18.dp)).background(if(mine)Color(0xff3a4977) else Surface).padding(10.dp)) {
                     msg.optJSONObject("media")?.let { media ->
                         if(msg.optString("kind")=="image") AsyncImage(ImageRequest.Builder(LocalContext.current).data(m.server+media.optString("url")).addHeader("Authorization","Bearer ${m.token}").build(),media.optString("name"),Modifier.widthIn(max=280.dp).heightIn(max=240.dp))

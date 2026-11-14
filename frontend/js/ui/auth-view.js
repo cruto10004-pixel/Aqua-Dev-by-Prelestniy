@@ -1,3 +1,4 @@
+import { enter } from '../motion.js';
 /* Экран входа и регистрации.
    Вход: логин + пароль. Регистрация и восстановление: код приходит в Telegram-бота по ссылке,
    который открывает пользователь (бот привязывает чат к попытке). */
@@ -96,6 +97,7 @@ export function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPho
         to.classList.add('auth-form--in');
         void to.offsetHeight;
         to.classList.remove('auth-form--in');
+        enter(to, 'page');
         onShown?.();
         pending = setTimeout(() => {
           if (myToken !== token) return;
