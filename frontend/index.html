@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/editor.css">
   <link rel="stylesheet" href="css/polish.css">
   <link rel="stylesheet" href="css/theme-slim.css">
+  <link rel="stylesheet" href="css/aqua.css?v=3">
 </head>
 <body>
 
@@ -341,25 +342,25 @@
         </div>
       </header>
 
-      <div class="sidebar__search">
-        <label class="search">
-          <svg class="icon"><use href="#i-search"/></svg>
-          <span class="visually-hidden">Поиск</span>
-          <input class="input" type="search" id="search" placeholder="Поиск" autocomplete="off">
-        </label>
-      </div>
-
       <!-- Список строится JS из GET /api/chats -->
       <ul class="sidebar__list scroll" id="chat-list"></ul>
 
       <!-- Нижнее меню -->
+      <div class="nav-dock" id="nav-dock">
       <nav class="nav" id="nav" aria-label="Разделы">
         <span class="nav__pill" id="nav-pill" aria-hidden="true"></span>
         <button class="nav__item is-active" type="button" id="nav-chats" aria-current="page"><svg class="icon"><use href="#i-chats"/></svg><span>Чаты</span></button>
         <button class="nav__item" type="button" id="nav-contacts"><svg class="icon"><use href="#i-contacts"/></svg><span>Контакты</span></button>
-        <button class="nav__item" type="button" id="nav-settings"><svg class="icon"><use href="#i-settings"/></svg><span>Настройки</span></button>
         <button class="nav__item" type="button" id="nav-profile"><span class="nav__avatar" id="nav-avatar"></span><span>Профиль</span></button>
+        <button class="nav__item" type="button" id="nav-settings"><svg class="icon"><use href="#i-settings"/></svg><span>Настройки</span></button>
       </nav>
+      <button id="nav-search" class="nav-search" aria-label="Поиск" aria-expanded="false"><svg class="icon"><use href="#i-search"/></svg></button>
+      <div id="nav-search-field" class="nav-search-field" hidden>
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input id="search" type="search" placeholder="Найти в Aqua" aria-label="Поиск чатов и людей" autocomplete="off">
+        <button id="nav-search-close" aria-label="Закрыть поиск">✕</button>
+      </div>
+      </div>
       <button class="fab-channel" type="button" id="btn-new-channel" aria-label="Создать канал" title="Создать канал">
         <svg class="icon"><use href="#i-edit"/></svg>
       </button>
@@ -693,6 +694,6 @@
 
 <!-- ES-модули: открывать через сервер (http://127.0.0.1:8000), не через file:// -->
 <script src="js/boot-check.js"></script>
-<script src="js/bundle.js"></script>
+<script src="js/bundle.js?v=aqua-native-3"></script>
 </body>
 </html>

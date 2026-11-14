@@ -10,3 +10,8 @@ data/*
 !data/.gitkeep
 android-app/node_modules/
 android-app/android/
+android-native/.gradle/
+android-native/**/build/
+android-native/local.properties
+*.jks
+*.keystore

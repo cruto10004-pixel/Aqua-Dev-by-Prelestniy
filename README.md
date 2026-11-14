@@ -144,7 +144,13 @@ frontend/
 Локально открывать нужно через сервер (`http://127.0.0.1:8000`), а не двойным кликом по `index.html`.
 
 ## Android (APK)
-См. `android-app/README.md`: APK собирается в GitHub Actions (Capacitor), скачивается с телефона из Releases.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:3caa3a94bebf02ed3a0dfa1904057cf2ad772c8dac418b768687a11e50ba900b -->
+
+Нативный Kotlin/Compose-клиент: [android-native/README.md](android-native/README.md). GitHub Actions собирает debug APK в Artifacts; подписанные Releases требуют Secrets. Старый `android-app/` содержит прежнюю Capacitor-оболочку и больше не используется этим workflow. Ограничения первой нативной версии перечислены в инструкции.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Действия с сообщениями
 Меню сообщения (ПКМ / двойной клик / долгое нажатие) содержит реакции и действия:

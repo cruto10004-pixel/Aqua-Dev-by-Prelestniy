@@ -9,6 +9,73 @@
 
 const __m = {};
 
+__m["ui/search-morph.js"] = (function () {
+
+/** The search morph owns temporary geometry only while transitioning. */
+function initSearchMorph() {
+  const dock = document.querySelector('#nav-dock');
+  const nav = document.querySelector('#nav');
+  const button = document.querySelector('#nav-search');
+  const field = document.querySelector('#nav-search-field');
+  const input = document.querySelector('#search');
+  let phase = 'closed', generation = 0;
+  let animations = [];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  function reset() {
+    generation++;
+    animations.forEach(a => a.cancel()); animations = [];
+    field.hidden = true; field.removeAttribute('style');
+    requestAnimationFrame(() => { if (phase === 'closed') field.removeAttribute('style'); });
+    nav.removeAttribute('style'); button.removeAttribute('style');
+    nav.inert = false; button.inert = false;
+    dock.classList.remove('search-open'); phase = 'closed';
+    button.setAttribute('aria-expanded', 'false');
+    input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  async function transition(open) {
+    if (open ? phase !== 'closed' : phase !== 'open') return;
+    const run = ++generation;
+    const bounds = dock.getBoundingClientRect();
+    const from = open ? button.getBoundingClientRect() : field.getBoundingClientRect();
+    const navWidth = bounds.width - 60;
+    phase = open ? 'opening' : 'closing';
+    field.hidden = false; nav.inert = true; button.inert = true;
+    // Freeze actual pixels before closing. Never animate left and right together.
+    field.style.position = 'absolute'; field.style.width = `${from.width}px`;
+    field.style.left = `${from.left - bounds.left}px`; field.style.removeProperty('right');
+    const duration = reduced.matches ? 0 : open ? 400 : 350;
+    const options = { duration, easing: 'cubic-bezier(.22,.8,.24,1)', fill: 'forwards' };
+    animations = [field.animate([{width:`${from.width}px`,left:`${from.left-bounds.left}px`},
+      {width:`${open ? bounds.width : 52}px`,left:`${open ? 0 : bounds.width-52}px`}], options),
+      nav.animate([{width:`${open ? navWidth : 0}px`,opacity:open?1:0},{width:`${open ? 0 : navWidth}px`,opacity:open?0:1}],options),
+      button.animate([{width:`${open ? 52 : 0}px`,opacity:open?1:0},{width:`${open ? 0 : 52}px`,opacity:open?0:1}],options)];
+    field.classList.remove('is-ready');
+    await Promise.all(animations.map(a => a.finished.catch(() => {})));
+    if (run !== generation) return;
+    if (!open) { reset(); button.focus(); return; }
+    dock.classList.add('search-open');
+    animations.forEach(a => a.cancel()); animations = [];
+    field.removeAttribute('style'); phase = 'open'; field.classList.add('is-ready');
+    button.setAttribute('aria-expanded','true'); input.focus();
+  }
+  button.addEventListener('click', () => transition(true));
+  document.querySelector('#nav-search-close').addEventListener('click', () => transition(false));
+  input.addEventListener('keydown', e => { if(e.key==='Escape') { e.stopPropagation(); transition(false); } });
+  const sync = () => {
+    const available = !document.querySelector('.modal.is-open') && document.querySelector('#app').dataset.chatOpen !== 'true';
+    button.hidden = !available;
+    if (!available && phase !== 'closed') reset();
+  };
+  new MutationObserver(sync).observe(document.querySelector('#app'),{attributes:true,attributeFilter:['data-chat-open']});
+  document.querySelectorAll('.modal').forEach(m => new MutationObserver(sync).observe(m,{attributes:true,attributeFilter:['class']}));
+  let width = dock.getBoundingClientRect().width;
+  new ResizeObserver(() => { const next=dock.getBoundingClientRect().width; if(next!==width && (phase==='opening'||phase==='closing')) reset(); width=next; }).observe(dock);
+  sync();
+}
+
+  return { initSearchMorph };
+})();
+
 __m["dom.js"] = (function () {
 
 /* Мини-хелперы для работы с DOM. Текст пользователей вставляется только через textContent /
@@ -3203,7 +3270,7 @@ const PALETTES = [
   { id: 'rose', name: 'Роза', accent: '#C2417A', swatch: '#C2417A' },
   { id: 'sunset', name: 'Закат', accent: '#D9642B', swatch: '#D9642B' },
   { id: 'graphite', name: 'Графит', accent: '#475569', swatch: '#475569' },
-  { id: 'night', name: 'Ночь', dark: true, swatch: '#0E1A26' },
+  { id: 'night', name: 'Ночь', dark: true, swatch: '#131a2b' },
 ];
 
 const WALLPAPERS = [
@@ -3217,11 +3284,12 @@ const WALLPAPERS = [
 ];
 
 const DARK = {
-  '--color-bg': '#0E1A26', '--color-surface': '#15263A', '--color-surface-alt': '#1B3047', '--color-border': '#26405C',
-  '--color-text': '#E6F2FF', '--color-text-muted': '#8FB0CC', '--color-primary': '#7CC4F2', '--color-accent': '#5BB8E8',
-  '--bubble-in-bg': '#1F3550', '--bubble-in-text': '#E6F2FF',
-  '--aqua-50': '#1B3047', '--aqua-100': '#20384F', '--aqua-200': '#274560', '--aqua-300': '#2F5473',
-  '--aqua-deep': '#E6F2FF', '--aqua-icon': '#8CCBF2', '--aqua-teal-600': '#2A86B8', '--aqua-navy': '#1D5F8A', '--aqua-sky': '#12314A',
+  '--color-bg': '#131a2b', '--color-surface': '#202b43', '--color-surface-alt': '#293550', '--color-border': '#33415d',
+  '--color-text': '#E6F2FF', '--color-text-muted': '#aab8d2', '--color-primary': '#7CC4F2', '--color-accent': '#5BB8E8',
+  '--bubble-in-bg': '#25324b', '--bubble-in-text': '#E6F2FF',
+  '--bubble-out-bg': '#3a4977', '--bubble-out-text': '#edf2ff',
+  '--aqua-50': '#293550', '--aqua-100': '#20384F', '--aqua-200': '#274560', '--aqua-300': '#2F5473',
+  '--aqua-deep': '#E6F2FF', '--aqua-icon': '#8CCBF2', '--aqua-teal-600': '#2A86B8', '--aqua-navy': '#b1c5ff', '--aqua-sky': '#12314A',
   '--color-focus': 'rgba(91,184,232,.5)',
 };
 
@@ -3248,7 +3316,7 @@ function paletteVars(prefs) {
   if (id === 'night') return DARK;
   if (id === 'custom' && /^#[0-9a-f]{6}$/i.test(prefs.accent || '')) return derive(prefs.accent);
   const p = PALETTES.find((x) => x.id === id);
-  return p?.accent ? derive(p.accent) : {};
+  return p?.accent ? derive(p.accent) : DARK;
 }
 
 function wallpaperCss(w) {
@@ -3263,8 +3331,8 @@ function applyPrefs(prefs, { cache = true } = {}) {
   for (const name of MANAGED) root.style.removeProperty(name);
   const vars = paletteVars(prefs);
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-  root.style.colorScheme = prefs?.palette === 'night' ? 'dark' : 'light';
-  root.dataset.theme = prefs?.palette === 'night' ? 'dark' : 'light';
+  root.style.colorScheme = (!prefs?.palette || prefs.palette === 'sea' || prefs.palette === 'night') ? 'dark' : 'light';
+  root.dataset.theme = (!prefs?.palette || prefs.palette === 'sea' || prefs.palette === 'night') ? 'dark' : 'light';
   if (Number.isInteger(prefs?.bubble_radius)) root.style.setProperty('--bubble-radius', `${prefs.bubble_radius}px`);
   if (Number.isInteger(prefs?.text_size)) root.style.setProperty('--msg-scale', String(prefs.text_size / 100));
   const css = wallpaperCss(prefs?.wallpaper);
@@ -4769,6 +4837,7 @@ const clearPrev = () => storage.remove(PREV);
 })();
 
 __m["app.js"] = (function () {
+  const { initSearchMorph } = __m["ui/search-morph.js"];
   const { $ } = __m["dom.js"];
   const { debounce } = __m["dom.js"];
   const { api, mediaUrl, setToken, getToken, setUnauthorizedHandler } = __m["api.js"];
@@ -4807,6 +4876,7 @@ __m["app.js"] = (function () {
   const { initNotifications, askPermissionOnEntry, notifyMessage } = __m["notify.js"];
   const { rememberAccount, forgetAccount, listAccounts, switchAccount, startAddAccount, hasPrevSession, cancelAddAccount, clearPrev } = __m["accounts.js"];
   const { openEditor } = __m["editor/editor-modal.js"];
+
 /* Точка входа клиента Aqua: связывает API, WebSocket, состояние и UI-модули. */
 
 
@@ -5534,6 +5604,8 @@ initSplash();                                   // заставка идёт п�
 $('#auth-cancel').addEventListener('click', cancelAddAccount);
 
 window.__aquaStarted?.();                       // сообщаем стражу (boot-check.js), что модули загрузились
+
+initSearchMorph();
 
   return {};
 })();
