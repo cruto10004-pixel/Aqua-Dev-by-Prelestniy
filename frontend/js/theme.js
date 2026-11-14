@@ -11,7 +11,7 @@ export const PALETTES = [
   { id: 'rose', name: 'Роза', accent: '#C2417A', swatch: '#C2417A' },
   { id: 'sunset', name: 'Закат', accent: '#D9642B', swatch: '#D9642B' },
   { id: 'graphite', name: 'Графит', accent: '#475569', swatch: '#475569' },
-  { id: 'night', name: 'Ночь', dark: true, swatch: '#0E1A26' },
+  { id: 'night', name: 'Ночь', dark: true, swatch: '#131a2b' },
 ];
 
 export const WALLPAPERS = [
@@ -25,11 +25,12 @@ export const WALLPAPERS = [
 ];
 
 const DARK = {
-  '--color-bg': '#0E1A26', '--color-surface': '#15263A', '--color-surface-alt': '#1B3047', '--color-border': '#26405C',
-  '--color-text': '#E6F2FF', '--color-text-muted': '#8FB0CC', '--color-primary': '#7CC4F2', '--color-accent': '#5BB8E8',
-  '--bubble-in-bg': '#1F3550', '--bubble-in-text': '#E6F2FF',
-  '--aqua-50': '#1B3047', '--aqua-100': '#20384F', '--aqua-200': '#274560', '--aqua-300': '#2F5473',
-  '--aqua-deep': '#E6F2FF', '--aqua-icon': '#8CCBF2', '--aqua-teal-600': '#2A86B8', '--aqua-navy': '#1D5F8A', '--aqua-sky': '#12314A',
+  '--color-bg': '#131a2b', '--color-surface': '#202b43', '--color-surface-alt': '#293550', '--color-border': '#33415d',
+  '--color-text': '#E6F2FF', '--color-text-muted': '#aab8d2', '--color-primary': '#7CC4F2', '--color-accent': '#5BB8E8',
+  '--bubble-in-bg': '#25324b', '--bubble-in-text': '#E6F2FF',
+  '--bubble-out-bg': '#3a4977', '--bubble-out-text': '#edf2ff',
+  '--aqua-50': '#293550', '--aqua-100': '#20384F', '--aqua-200': '#274560', '--aqua-300': '#2F5473',
+  '--aqua-deep': '#E6F2FF', '--aqua-icon': '#8CCBF2', '--aqua-teal-600': '#2A86B8', '--aqua-navy': '#b1c5ff', '--aqua-sky': '#12314A',
   '--color-focus': 'rgba(91,184,232,.5)',
 };
 
@@ -56,7 +57,7 @@ export function paletteVars(prefs) {
   if (id === 'night') return DARK;
   if (id === 'custom' && /^#[0-9a-f]{6}$/i.test(prefs.accent || '')) return derive(prefs.accent);
   const p = PALETTES.find((x) => x.id === id);
-  return p?.accent ? derive(p.accent) : {};
+  return p?.accent ? derive(p.accent) : DARK;
 }
 
 export function wallpaperCss(w) {
@@ -71,8 +72,8 @@ export function applyPrefs(prefs, { cache = true } = {}) {
   for (const name of MANAGED) root.style.removeProperty(name);
   const vars = paletteVars(prefs);
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-  root.style.colorScheme = prefs?.palette === 'night' ? 'dark' : 'light';
-  root.dataset.theme = prefs?.palette === 'night' ? 'dark' : 'light';
+  root.style.colorScheme = (!prefs?.palette || prefs.palette === 'sea' || prefs.palette === 'night') ? 'dark' : 'light';
+  root.dataset.theme = (!prefs?.palette || prefs.palette === 'sea' || prefs.palette === 'night') ? 'dark' : 'light';
   if (Number.isInteger(prefs?.bubble_radius)) root.style.setProperty('--bubble-radius', `${prefs.bubble_radius}px`);
   if (Number.isInteger(prefs?.text_size)) root.style.setProperty('--msg-scale', String(prefs.text_size / 100));
   const css = wallpaperCss(prefs?.wallpaper);

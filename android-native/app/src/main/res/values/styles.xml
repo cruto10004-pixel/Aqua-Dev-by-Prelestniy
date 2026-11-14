@@ -1,0 +1,14 @@
+<resources>
+    <style name="Theme.Aqua" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#131A2B</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/aqua</item>
+        <item name="postSplashScreenTheme">@style/Theme.Aqua.Main</item>
+    </style>
+    <style name="Theme.Aqua.Main" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#131A2B</item>
+        <item name="android:navigationBarColor">#131A2B</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

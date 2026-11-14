@@ -1,3 +1,4 @@
+import { initSearchMorph } from './ui/search-morph.js';
 /* Точка входа клиента Aqua: связывает API, WebSocket, состояние и UI-модули. */
 import { $ } from './dom.js';
 import { debounce } from './dom.js';
@@ -731,3 +732,5 @@ initSplash();                                   // заставка идёт п�
 $('#auth-cancel').addEventListener('click', cancelAddAccount);
 
 window.__aquaStarted?.();                       // сообщаем стражу (boot-check.js), что модули загрузились
+
+initSearchMorph();
