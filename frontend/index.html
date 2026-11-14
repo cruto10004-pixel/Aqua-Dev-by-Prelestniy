@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- viewport-fit=cover — чтобы работали safe-area на iPhone с вырезом -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#A2D1FF">
+  <meta name="theme-color" content="#131a2b">
   <title>Aqua — мессенджер</title>
   <link rel="icon" type="image/png" sizes="64x64" href="assets/icon-64.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="css/editor.css">
   <link rel="stylesheet" href="css/polish.css">
   <link rel="stylesheet" href="css/theme-slim.css">
-  <link rel="stylesheet" href="css/aqua.css?v=3">
+  <link rel="stylesheet" href="css/aqua.css?v=auth-4">
 </head>
 <body>
 
@@ -201,6 +201,7 @@
       <header class="auth__brand">
         <img class="auth__logo" src="assets/icon-192.png" width="80" height="80" alt="">
         <h1 class="auth__title">Aqua</h1>
+        <p class="auth__subtitle">Ближе, даже на расстоянии</p>
       </header>
 
       <!-- Обёртка нужна для плавной анимации высоты/кроссфейда при переключении страниц -->
@@ -217,6 +218,7 @@
         <div class="auth__tabforms" id="auth-tabforms">
         <!-- Вход: логин и пароль -->
         <form id="form-login" novalidate>
+          <div class="auth__intro"><h2>С возвращением</h2><p>Войдите, чтобы продолжить общение.</p></div>
           <div class="form-error" id="login-error" role="alert" hidden></div>
           <div class="field">
             <label class="field__label" for="login-username">Логин</label>
@@ -234,15 +236,17 @@
         <!-- Регистрация: логин и пароль — код приходит в Telegram-бот по ссылке, вводится на отдельной странице -->
         <!-- Регистрация, шаг 1: номер, который выдаёт Telegram-бот; код придёт в тот же чат -->
         <form id="form-register" novalidate hidden>
+          <div class="auth__intro"><h2>Ваш аккаунт Aqua</h2><p>Подтвердите Telegram, затем выберите логин и пароль.</p></div>
           <div class="form-error" id="reg-error" role="alert" hidden></div>
+          <div class="auth__step"><span class="auth__step-number">1</span><div><strong>Получите идентификатор</strong><p>Откройте бота Aqua и нажмите Start. Он выдаст 11 цифр — это ваш идентификатор, а не номер телефона.</p></div></div>
+          <a class="btn btn--ghost btn--block" id="reg-bot" href="#" target="_blank" rel="noopener" aria-disabled="true">Открыть бота Aqua в Telegram ↗</a>
+          <div class="auth__step"><span class="auth__step-number">2</span><div><strong>Вернитесь в Aqua</strong><p>Вставьте полученные цифры. Код подтверждения придёт в тот же Telegram-чат.</p></div></div>
           <div class="field">
-            <label class="field__label" for="reg-phone">Номер из бота</label>
-            <input class="input" id="reg-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" required>
+            <label class="field__label" for="reg-phone">Идентификатор из бота</label>
+            <input class="input" id="reg-phone" name="phone" type="text" inputmode="numeric" autocomplete="off" placeholder="11 цифр из сообщения бота" aria-describedby="reg-phone-error" required>
             <p class="field__error" id="reg-phone-error"></p>
-            <p class="auth__hint">Откройте бота, нажмите Start и введите выданный номер. Код придёт туда же.</p>
           </div>
-          <a class="btn btn--ghost btn--block" id="reg-bot" href="#" target="_blank" rel="noopener">Открыть бота в Telegram</a>
-          <button class="btn btn--primary btn--block" type="submit" id="reg-submit">Получить код</button>
+          <button class="btn btn--primary btn--block" type="submit" id="reg-submit" disabled>Получить код в Telegram</button>
         </form>
         </div>
       </section>
@@ -273,7 +277,7 @@
           <svg class="icon"><use href="#i-forward"/></svg>
         </button>
         <h2 class="auth__view-title">Логин и пароль</h2>
-        <p class="auth__hint">Номер подтверждён. Придумайте логин, по нему вы будете входить.</p>
+        <p class="auth__hint">Telegram подтверждён. Придумайте логин и пароль для входа в Aqua.</p>
         <form id="form-finish" novalidate>
           <div class="form-error" id="finish-error" role="alert" hidden></div>
           <div class="field">
@@ -694,6 +698,6 @@
 
 <!-- ES-модули: открывать через сервер (http://127.0.0.1:8000), не через file:// -->
 <script src="js/boot-check.js"></script>
-<script src="js/bundle.js?v=aqua-native-3"></script>
+<script src="js/bundle.js?v=auth-4"></script>
 </body>
 </html>

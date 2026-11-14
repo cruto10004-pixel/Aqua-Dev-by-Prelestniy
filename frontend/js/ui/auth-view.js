@@ -130,7 +130,7 @@ export function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPho
     $('#tab-register').setAttribute('aria-selected', String(name === 'register'));
     const from = name === 'login' ? regForm : loginForm;
     const to = name === 'login' ? loginForm : regForm;
-    const focusTarget = name === 'login' ? lUser : rPhone;
+    const focusTarget = name === 'login' ? lUser : $('#tab-register');
     switchTab(from, to, { onShown: () => focusTarget.focus({ preventScroll: true }) });
   }
   $('#tab-login').addEventListener('click', () => setTab('login'));
@@ -246,7 +246,16 @@ export function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPho
 
   rPhone.addEventListener('input', () => setFieldError(rPhone, ''));
   // Ссылка на бота нужна сразу: без неё человек не получит номер. Если бот не настроен — кнопку прячем.
-  onLoadBotLink().then((r) => { regBot.href = r.link; }).catch(() => { regBot.hidden = true; });
+  regBot.addEventListener('click', (event) => {
+    if (regBot.getAttribute('aria-disabled') === 'true') event.preventDefault();
+  });
+  onLoadBotLink().then((r) => {
+    regBot.href = r.link;
+    regBot.removeAttribute('aria-disabled');
+    $('#reg-submit').disabled = false;
+  }).catch(() => {
+    showFormError($('#reg-error'), 'Регистрация временно недоступна: не удалось подключиться к боту Aqua. Обновите страницу и попробуйте ещё раз.');
+  });
 
   // Регистрация: номер из бота → код в Telegram → логин и пароль.
   let regRef = '';
@@ -255,7 +264,7 @@ export function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPho
     e.preventDefault();
     const err = $('#reg-error'); showFormError(err, '');
     const phone = rPhone.value.replace(/\D/g, '');
-    const pErr = phone.length === 11 ? '' : 'Введите номер из бота, например +7 900 000-00-00.';
+    const pErr = phone.length === 11 ? '' : 'Вставьте 11 цифр идентификатора из сообщения бота Aqua.';
     setFieldError(rPhone, pErr);
     if (pErr) { shake(regForm); haptic.error(); return; }
     setBusy(regBtn, true);
