@@ -64,7 +64,7 @@ class MainActivity: ComponentActivity() {
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.safeDrawingPadding().imePadding().padding(horizontal=16.dp)) {
             if(model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            model.error?.let { error -> Row(Modifier.fillMaxWidth().padding(8.dp),verticalAlignment=Alignment.CenterVertically) { Text(error,Modifier.weight(1f),color=MaterialTheme.colorScheme.error); TextButton(onClick={model.error=null}){Text("✕")} } }
+            if(model.user!=null) model.error?.let { error -> Row(Modifier.fillMaxWidth().padding(8.dp),verticalAlignment=Alignment.CenterVertically) { Text(error,Modifier.weight(1f),color=MaterialTheme.colorScheme.error); TextButton(onClick={model.error=null}){Text("✕")} } }
             if(model.user==null) { Auth(model); return@Column }
             if(model.selected!=null) { Conversation(model); return@Column }
             Row(Modifier.fillMaxWidth().padding(vertical=18.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -114,60 +114,6 @@ class MainActivity: ComponentActivity() {
 @Composable private fun Field(value:String,onChange:(String)->Unit,label:String,password:Boolean=false) {
     if(password) OutlinedTextField(value,onChange,Modifier.fillMaxWidth(),label={Text(label)},singleLine=true,visualTransformation=PasswordVisualTransformation())
     else OutlinedTextField(value,onChange,Modifier.fillMaxWidth(),label={Text(label)},singleLine=true)
-}
-@Composable private fun Auth(m:AquaModel) {
-    var mode by rememberSaveable{mutableStateOf("login")}
-    var name by rememberSaveable{mutableStateOf("")}
-    var password by remember{mutableStateOf("")}
-    var phone by rememberSaveable{mutableStateOf("")}
-    var code by remember{mutableStateOf("")}
-    var ref by remember{mutableStateOf("")}
-    val uri=LocalUriHandler.current
-    val focus=androidx.compose.ui.platform.LocalFocusManager.current
-    fun switchMode(next:String) { mode=next;password="";code="";ref="";m.error=null;focus.clearFocus() }
-    BackHandler(mode!="login") { switchMode("login") }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical=24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(24.dp)) {
-        Spacer(Modifier.height(8.dp))
-        Image(painterResource(R.drawable.aqua),"Aqua",Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)))
-        Text("Aqua",fontSize=30.sp,fontWeight=FontWeight.Bold)
-        Text("Ближе, даже на расстоянии",color=Color(0xffaab8d2),fontSize=13.sp)
-        Column(Modifier.widthIn(max=420.dp).fillMaxWidth().animateContentSize(tween(360)).padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-            if(mode=="login" || mode=="phone") Row(Modifier.fillMaxWidth().background(Navy,RoundedCornerShape(16.dp)).padding(4.dp)) {
-                listOf("login" to "Вход","phone" to "Регистрация").forEach { (value,label) ->
-                    TextButton(onClick={switchMode(value)},enabled=!m.busy,modifier=Modifier.weight(1f).background(if(mode==value)Color(0xff3a4c73) else Color.Transparent,RoundedCornerShape(12.dp))){Text(label,color=if(mode==value)Color.White else Color(0xffaab8d2))}
-                }
-            }
-            Text(when(mode){"login"->"С возвращением";"phone"->"Ваш аккаунт Aqua";"code"->"Подтвердите Telegram";"finish"->"Почти готово";"recover"->"Восстановить доступ";else->"Новый пароль"},fontSize=21.sp,fontWeight=FontWeight.Bold)
-            when(mode) {
-                "phone" -> {
-                    Text("1. Откройте бота Aqua и нажмите Start. Он выдаст 11 цифр — это идентификатор, а не ваш номер телефона.",fontSize=13.sp,color=Color(0xffaab8d2))
-                    OutlinedButton(onClick={m.run { uri.openUri((m.call("/auth/register/bot") as JSONObject).getString("link")) }},enabled=!m.busy,modifier=Modifier.fillMaxWidth()){Text("Открыть бота Aqua в Telegram ↗")}
-                    Text("2. Вернитесь сюда и вставьте идентификатор. Код придёт в тот же чат Telegram.",fontSize=13.sp,color=Color(0xffaab8d2))
-                    OutlinedTextField(phone,{phone=it},Modifier.fillMaxWidth(),label={Text("Идентификатор из бота")},singleLine=true,keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
-                }
-                "code" -> { Text("Введите код из сообщения бота Aqua.",fontSize=13.sp,color=Color(0xffaab8d2));Field(code,{code=it},"Код подтверждения") }
-                else -> {
-                    if(mode=="login")Text("Войдите, чтобы продолжить общение.",fontSize=13.sp,color=Color(0xffaab8d2))
-                    if(mode=="recover")Text("Код восстановления придёт в Telegram, привязанный к вашему аккаунту.",fontSize=13.sp,color=Color(0xffaab8d2))
-                    if(mode=="finish")Text("Придумайте логин и пароль для входа в Aqua.",fontSize=13.sp,color=Color(0xffaab8d2))
-                    if(mode!="reset")Field(name,{name=it},"Логин")
-                    if(mode!="recover")Field(password,{password=it},if(mode=="reset")"Новый пароль" else "Пароль",true)
-                    if(mode=="reset")Field(code,{code=it},"Код из Telegram")
-                }
-            }
-            Button(enabled=!m.busy,onClick={focus.clearFocus();when(mode){
-                "login" -> m.login(name.trim(),password)
-                "phone" -> m.run { require(phone.count{it.isDigit()}==11){"Вставьте 11 цифр из сообщения бота Aqua"};ref=(m.call("/auth/register/phone","POST",obj("phone" to phone)) as JSONObject).getString("ref");mode="code" }
-                "code" -> m.run { m.call("/auth/register/code","POST",obj("ref" to ref,"code" to code));mode="finish";code="" }
-                "finish" -> m.run { m.acceptSession(m.call("/auth/register","POST",obj("ref" to ref,"username" to name.trim(),"password" to password)) as JSONObject);password="";m.refresh() }
-                "recover" -> m.run { ref=(m.call("/auth/reset/code","POST",obj("username" to name.trim())) as JSONObject).getString("ref");mode="reset" }
-                "reset" -> m.run { m.acceptSession(m.call("/auth/reset","POST",obj("ref" to ref,"code" to code,"password" to password)) as JSONObject);password="";code="";m.refresh() }
-            }},modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(15.dp)){
-                Text(if(m.busy)"Подождите…" else when(mode){"login"->"Войти";"phone"->"Получить код в Telegram";"code"->"Подтвердить";"finish"->"Создать аккаунт";"recover"->"Получить код";else->"Сохранить пароль"})
-            }
-            TextButton(onClick={switchMode(if(mode=="login")"recover" else "login")},enabled=!m.busy,modifier=Modifier.align(Alignment.CenterHorizontally)){Text(if(mode=="login")"Забыли пароль?" else "Назад ко входу")}
-        }
-    }
 }
 @Composable private fun Contacts(m:AquaModel) {
     var query by rememberSaveable { mutableStateOf("") };var results by remember { mutableStateOf<List<JSONObject>?>(null) }
