@@ -1,0 +1,121 @@
+// Local design prototype. No network requests, account creation or persistent storage.
+(() => {
+  const $ = s => document.querySelector(s);
+  const screens = [...document.querySelectorAll('[data-step]')];
+  const labels = ['ДОБРО ПОЖАЛОВАТЬ', 'ВАШЕ СОГЛАСИЕ', 'НОМЕР ОТ БОТА', 'ПОДТВЕРЖДЕНИЕ', 'ВАШ ПРОФИЛЬ', 'ВСЁ ГОТОВО', 'ДЕМО AQUA'];
+  let step = 0, moving = false, photoUrl = '', photoRequest = 0;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  function show(next) {
+    if (moving || next < 0 || next >= screens.length) return;
+    moving = true;
+    screens[step].classList.add('leaving');
+    setTimeout(() => {
+      screens[step].hidden = true;
+      screens[step].classList.remove('leaving');
+      step = next;
+      screens[step].hidden = false;
+      $('#back').hidden = step === 0;
+      $('#step-label').textContent = labels[step];
+      $('#step-count').textContent = `${String(Math.min(step + 1, 6)).padStart(2, '0')} / 06`;
+      $('#progress-fill').style.width = `${Math.min(step + 1, 6) / 6 * 100}%`;
+      const heading = screens[step].querySelector('h2');
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      if (innerWidth <= 700) window.scrollTo({ top: 0, behavior: 'instant' });
+      moving = false;
+    }, reduced.matches ? 0 : 220);
+  }
+  document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => show(step + 1)));
+  document.querySelectorAll('[data-prev]').forEach(b => b.addEventListener('click', () => show(step - 1)));
+  $('#back').onclick = () => show(step - 1);
+  $('#consent').onchange = e => { $('#policy-next').disabled = !e.target.checked; };
+  $('#policy-next').onclick = () => { if ($('#consent').checked) show(2); };
+  $('#bot-info').onclick = () => { $('#bot-hint').hidden = !$('#bot-hint').hidden; };
+  $('#number-form').onsubmit = e => {
+    e.preventDefault();
+    const input = $('#bot-number'), digits = input.value.replace(/\s/g, '');
+    const valid = /^[0-9]{11}$/.test(digits);
+    $('#number-error').textContent = valid ? '' : 'Введите весь номер от бота: 11 цифр. Для демо: 12345678901.';
+    input.setAttribute('aria-invalid', String(!valid));
+    if (!valid) { input.focus(); return; }
+    input.value = digits; $('#number-preview').textContent = digits; show(3);
+  };
+  const otp = $('.otp');
+  for (let i = 0; i < 6; i++) {
+    const input = document.createElement('input');
+    input.type = 'text'; input.inputMode = 'numeric'; input.maxLength = 1;
+    input.autocomplete = i === 0 ? 'one-time-code' : 'off';
+    input.setAttribute('aria-label', `Цифра ${i + 1}`);
+    input.setAttribute('aria-describedby', 'otp-error');
+    otp.append(input);
+  }
+  const cells = [...otp.children];
+  function refreshOtp() { otp.classList.remove('invalid'); $('#otp-error').textContent = ''; cells.forEach(c => { c.classList.toggle('filled', !!c.value); c.removeAttribute('aria-invalid'); }); }
+  function insertCode(value, start) {
+    const digits = value.replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+    if (digits.length === 6) start = 0;
+    [...digits].forEach((d, i) => { if (cells[start + i]) cells[start + i].value = d; });
+    refreshOtp(); cells[Math.min(start + digits.length, 5)].focus();
+  }
+  cells.forEach((c, i) => {
+    c.addEventListener('input', () => { const v = c.value; c.value = ''; insertCode(v, i); refreshOtp(); });
+    c.addEventListener('paste', e => { e.preventDefault(); insertCode(e.clipboardData.getData('text'), i); });
+    c.addEventListener('focus', () => c.select());
+    c.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !c.value && i > 0) { e.preventDefault(); cells[i - 1].value = ''; cells[i - 1].focus(); refreshOtp(); }
+      if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); cells[i - 1].focus(); }
+      if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); cells[i + 1].focus(); }
+    });
+  });
+  $('#otp-form').onsubmit = e => {
+    e.preventDefault();
+    if (cells.map(c => c.value).join('') !== '123456') {
+      $('#otp-error').textContent = 'Для прототипа используйте тестовый код 123456.';
+      otp.classList.add('invalid'); cells.forEach(c => c.setAttribute('aria-invalid', 'true')); cells[0].focus(); return;
+    }
+    show(4);
+  };
+  function paintAvatar(target) {
+    target.replaceChildren();
+    if (photoUrl) { const img = new Image(); img.alt = 'Выбранное фото профиля'; img.src = photoUrl; target.append(img); }
+    else { const span = document.createElement('span'); span.textContent = $('#display-name').value.trim().slice(0, 1).toUpperCase() || 'А'; target.append(span); }
+  }
+  $('#display-name').oninput = () => { if (!photoUrl) paintAvatar($('#avatar-preview')); };
+  $('#photo').onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const request = ++photoRequest;
+    $('#photo-error').textContent = '';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      $('#photo-error').textContent = 'Выберите JPG, PNG или WebP размером до 5 МБ.'; e.target.value = ''; return;
+    }
+    const next = URL.createObjectURL(file), image = new Image(); image.src = next;
+    try { await image.decode(); } catch { URL.revokeObjectURL(next); if (request !== photoRequest) return; $('#photo-error').textContent = 'Не удалось прочитать изображение. Выберите другое фото.'; e.target.value = ''; return; }
+    if (request !== photoRequest) { URL.revokeObjectURL(next); return; }
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoUrl = next; paintAvatar($('#avatar-preview')); $('#remove-photo').hidden = false;
+  };
+  $('#remove-photo').onclick = () => {
+    photoRequest++;
+    if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = ''; $('#photo').value = '';
+    paintAvatar($('#avatar-preview')); $('#remove-photo').hidden = true; $('#photo-error').textContent = '';
+  };
+  $('#profile-form').onsubmit = e => {
+    e.preventDefault();
+    const name = $('#display-name').value.trim(), user = $('#username').value.trim();
+    let invalid = null;
+    if (!name) invalid = $('#display-name'); else if (!/^[a-zA-Z0-9_]{3,24}$/.test(user)) invalid = $('#username');
+    $('#profile-error').textContent = !name ? 'Как к вам обращаться? Укажите имя или никнейм.' : invalid ? 'Username: от 3 до 24 символов — латиница, цифры и _.' : '';
+    [$('#display-name'), $('#username')].forEach(c => c.setAttribute('aria-invalid', String(c === invalid)));
+    if (invalid) { invalid.focus(); return; }
+    $('#final-name').textContent = `${name}!`; $('#final-username').textContent = `@${user}`; $('#final-bio').textContent = $('#bio').value.trim();
+    paintAvatar($('#final-avatar')); show(5);
+  };
+  $('#restart').onclick = () => {
+    $('#remove-photo').click(); document.querySelectorAll('form').forEach(f => f.reset());
+    $('#consent').checked = false; $('#policy-next').disabled = true; $('#bot-hint').hidden = true;
+    document.querySelectorAll('.error').forEach(e => e.textContent = '');
+    document.querySelectorAll('[aria-invalid]').forEach(e => e.removeAttribute('aria-invalid'));
+    refreshOtp(); paintAvatar($('#avatar-preview')); show(0);
+  };
+})();
