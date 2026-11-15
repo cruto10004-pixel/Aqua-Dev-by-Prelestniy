@@ -1,3 +1,4 @@
+import { enter } from '../motion.js';
 /* Модальные окна: открытие/закрытие классом .is-open, Esc, клик по подложке, возврат фокуса. */
 import { $, $$ } from '../dom.js';
 
@@ -13,6 +14,7 @@ export function openModal(id) {
   if (!modal) return;
   if (!openId) lastFocus = document.activeElement;      // вложенные окна не затирают точку возврата фокуса
   modal.classList.add('is-open');
+  enter(modal.querySelector('.modal__dialog'), 'page');
   openId = id;
   document.body.classList.add('has-modal');
   // Фокус в окно после начала анимации (visibility меняется мгновенно при открытии)

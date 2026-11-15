@@ -49,7 +49,7 @@ class ApiFailure(val status: Int, message: String): Exception(message)
 class AquaModel(app: Application): AndroidViewModel(app) {
     private val store = SessionStore(app)
     private val http = OkHttpClient.Builder().pingInterval(25, java.util.concurrent.TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).callTimeout(25, java.util.concurrent.TimeUnit.SECONDS).build()
-    var server by mutableStateOf(""); var token by mutableStateOf(""); private set
+    val server = BuildConfig.AQUA_BASE_URL; var token by mutableStateOf(""); private set
     var user by mutableStateOf<JSONObject?>(null); private set
     suspend fun reloadProfile() { user=call("/auth/me") as JSONObject }
     var chats by mutableStateOf(emptyList<JSONObject>()); private set
@@ -60,9 +60,9 @@ class AquaModel(app: Application): AndroidViewModel(app) {
     var error by mutableStateOf<String?>(null)
     private var socket: WebSocket? = null
     private var epoch = 0
-    init { store.read()?.let { server=it.getString("server"); token=it.getString("token"); run { user=call("/auth/me") as JSONObject; refresh(); connect() } } }
+    init { store.read()?.let { if (it.optString("server") != server) { store.clear(); return@let }; token=it.getString("token"); run { user=call("/auth/me") as JSONObject; refresh(); connect() } } }
     suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Any = withContext(Dispatchers.IO) {
-        require(server.startsWith("https://") && java.net.URI(server).host != null) { "Укажите HTTPS-адрес сервера Aqua" }
+        require(server.startsWith("https://") && java.net.URI(server).host != null) { "Не удалось подключиться к Aqua" }
         val request = Request.Builder().url(server.trimEnd('/') + "/api" + path)
         if(token.isNotEmpty()) request.header("Authorization", "Bearer $token")
         request.method(method, if(method=="GET"||method=="DELETE") null else (body ?: JSONObject()).toString().toRequestBody("application/json".toMediaType()))

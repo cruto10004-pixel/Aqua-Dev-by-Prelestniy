@@ -1,3 +1,4 @@
+import { enter } from '../motion.js';
 /* Окно переписки: шапка, лента сообщений, индикатор «печатает…», подгрузка истории. */
 import { $, el, icon } from '../dom.js';
 import { state, peerOf, pendingToMessage } from '../state.js';
@@ -99,7 +100,7 @@ function messageNode(m, opts = {}) {
       (m.edited_at ? 'изменено · ' : '') + timeHM(m.created_at) + (opts.failed ? ' · не отправлено, нажмите, чтобы повторить' : '')));
   const node = el('article', {
     class: `msg msg--${mine ? 'out' : 'in'}${m.meta?.sticker ? ' msg--sticker' : ''}${m.media && !m.meta?.sticker && (m.kind === 'image' || m.kind === 'video') ? ' msg--media' : ''}${opts.animate ? ' is-new' : ''}${opts.pending ? ' is-pending' : ''}${opts.failed ? ' is-failed' : ''}`,
-    dataset: { id: m.id, ...(m.clientId ? { clientId: m.clientId } : {}) },
+    dataset: { sender: m.sender.id, id: m.id, ...(m.clientId ? { clientId: m.clientId } : {}) },
   }, bubble);
   if (m.reactions?.length) node.append(reactionsNode(m.reactions));
   return node;
@@ -130,7 +131,7 @@ export function setReactions(messageId, reactions) {
 function daySeparator(iso) { return el('div', { class: 'day-sep', text: dayLabel(iso) }); }
 
 /** Добавляет узлы перед индикатором «печатает…» (он всегда последний). */
-function insertNodes(nodes) { nodes.forEach((n) => messagesEl.insertBefore(n, typingEl)); }
+function insertNodes(nodes) { nodes.forEach((n) => { messagesEl.insertBefore(n, typingEl); if (n.matches('.msg')) enter(n, 'message'); }); }
 
 function buildNodes(items, chat, { animate = false } = {}) {
   const nodes = [];
@@ -183,18 +184,29 @@ export function renderStatus(chat) {
 }
 
 /** Полная перерисовка ленты: загруженные сообщения + отправляемые. */
+function groupBubbles() {
+  for (const node of messagesEl.querySelectorAll('.msg')) {
+    const prev = node.previousElementSibling, next = node.nextElementSibling;
+    node.classList.toggle('is-joined', Boolean(prev?.matches('.msg') && prev.dataset.sender === node.dataset.sender));
+    node.classList.toggle('has-next', Boolean(next?.matches('.msg') && next.dataset.sender === node.dataset.sender));
+  }
+}
+
 export function renderMessages(chat) {
   const h = state.history.get(chat.id);
   const items = [...(h?.items ?? []), ...(state.pending.get(chat.id) ?? []).map(pendingToMessage)];
   lastDay = null;
   messagesEl.replaceChildren(...buildNodes(items, chat), typingEl);
+  groupBubbles();
   scrollToBottom();
+  enter(messagesEl, 'page');
 }
 
 /** Добавляет одно сообщение в конец; прокручивает вниз, если пользователь и так внизу (или это его сообщение). */
 export function appendMessage(m, chat, { forceScroll = false } = {}) {
   const stick = forceScroll || nearBottom();
   insertNodes(buildNodes([m], chat, { animate: true }));
+  groupBubbles();
   if (stick) scrollToBottom(true);
 }
 

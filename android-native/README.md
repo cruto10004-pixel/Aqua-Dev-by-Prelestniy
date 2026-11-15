@@ -15,7 +15,13 @@ cd android-native
 ./gradlew lintDebug testDebugUnitTest assembleDebug
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`. В приложении укажите HTTPS-адрес существующего сервера Aqua, затем войдите своим логином и паролем. HTTP запрещён. Регистрация и восстановление требуют настроенного Telegram-бота на сервере. Адрес сервера не является секретом; токен и адрес сохраняются вместе в AES-GCM, ключ находится в Android Keystore, backup отключён.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:20c08b3fd7ebea207317ad301b583c2e8830be1b4eeb904e1915fe598224ebe5 -->
+
+APK: `app/build/outputs/apk/debug/app-debug.apk`. Приложение автоматически подключается к `https://aqua-dev-by-prelestniy.up.railway.app` — вводить сервер не нужно. Войдите своим логином и паролем. Адрес задан в `BuildConfig.AQUA_BASE_URL` при сборке; HTTP запрещён. Идентификатор из Telegram-бота — 11 цифр для регистрации, а не настоящий номер телефона.
+
+<!-- /coderabbit-ai-generated:v1 --> Регистрация и восстановление требуют настроенного Telegram-бота на сервере. Адрес сервера не является секретом; токен и адрес сохраняются вместе в AES-GCM, ключ находится в Android Keystore, backup отключён.
 
 ## GitHub Actions
 

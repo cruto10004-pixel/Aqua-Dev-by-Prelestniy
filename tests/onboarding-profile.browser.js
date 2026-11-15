@@ -1,0 +1,8 @@
+(async()=>{
+const $=s=>document.querySelector(s),w=()=>new Promise(r=>setTimeout(r,90));const click=async s=>{$(s).click();await w()};const checks=[];const ok=(c,m)=>{if(!c)throw Error(m);checks.push(m)};
+await click('[data-step="0"] [data-next]');$('#consent').click();await click('#policy-next');$('#bot-number').value='12345678901';await click('#number-form .primary');
+for(const n of '123456') $('[data-key="'+n+'"]').click();await click('.keypad-confirm');$('#display-name').value='Новый пользователь';$('#username').value='new_user';$('#bio').value='Текст о себе';await click('#profile-form .primary');await click('[data-step="5"] [data-next]');
+await click('[data-tab="profile"]');ok($('#home-name').textContent==='Новый пользователь','registration name');ok($('#profile-handle').textContent==='@new_user','registration username');ok($('#messenger-bio').textContent==='Текст о себе','registration bio');
+await click('#profile-edit');$('#edit-bio').value='Обновлённый профиль';$('#profile-edit-form').requestSubmit();await w();ok($('#messenger-bio').textContent==='Обновлённый профиль','local edit');
+await click('[data-tab="settings"]');await click('#restart');await click('#start-login');$('#login-name').value='mira_wave';$('#login-password').value='Aqua2026';await click('#login-form .primary');await new Promise(r=>setTimeout(r,1200));await click('[data-tab="profile"]');ok($('#home-name').textContent==='Мира Волна','demo account after restart');ok($('#messenger-bio').textContent==='Расскажите немного о себе.','registration bio not exposed in demo account');return {checks:checks.length,passed:checks};
+})()

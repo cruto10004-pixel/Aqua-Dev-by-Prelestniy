@@ -9,6 +9,37 @@
 
 const __m = {};
 
+__m["motion.js"] = (function () {
+
+// Adapted from the supplied prototype's motion.js: interruptible WAAPI transitions.
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const active = new Map();
+function enter(node, kind = 'page') {
+  if (!node || reduced.matches) return;
+  active.get(node)?.cancel();
+  const message = kind === 'message';
+  const animation = node.animate([
+    { opacity: 0, transform: `translateY(${message ? 12 : 18}px)` },
+    { opacity: 1, transform: 'translateY(0)' },
+  ], { duration: message ? 280 : 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  active.set(node, animation);
+  animation.finished.catch(() => {}).finally(() => { if (active.get(node) === animation) active.delete(node); });
+}
+function initMotion() {
+  enter(document.querySelector('.auth__card'));
+  reduced.addEventListener('change', () => { if (reduced.matches) { active.forEach(a => a.cancel()); active.clear(); } });
+  // Menus mount dynamically; animate their own surface without animating the backdrop.
+  new MutationObserver(records => {
+    for (const record of records) for (const node of record.addedNodes) {
+      if (node.nodeType !== 1) continue;
+      if (node.matches('.menu,.peer-menu,.dialog')) enter(node.querySelector('.dialog__card') || node);
+    }
+  }).observe(document.body, {childList: true, subtree: true});
+}
+
+  return { enter, initMotion };
+})();
+
 __m["ui/search-morph.js"] = (function () {
 
 /** The search morph owns temporary geometry only while transitioning. */
@@ -604,7 +635,9 @@ function toast(message, ms = 3200) {
 })();
 
 __m["ui/modal.js"] = (function () {
+  const { enter } = __m["motion.js"];
   const { $, $$ } = __m["dom.js"];
+
 /* Модальные окна: открытие/закрытие классом .is-open, Esc, клик по подложке, возврат фокуса. */
 
 
@@ -620,6 +653,7 @@ function openModal(id) {
   if (!modal) return;
   if (!openId) lastFocus = document.activeElement;      // вложенные окна не затирают точку возврата фокуса
   modal.classList.add('is-open');
+  enter(modal.querySelector('.modal__dialog'), 'page');
   openId = id;
   document.body.classList.add('has-modal');
   // Фокус в окно после начала анимации (visibility меняется мгновенно при открытии)
@@ -680,9 +714,11 @@ function usernameError(username) {
 })();
 
 __m["ui/auth-view.js"] = (function () {
+  const { enter } = __m["motion.js"];
   const { $ } = __m["dom.js"];
   const { usernameError, isPasswordValid } = __m["validators.js"];
   const { haptic } = __m["haptics.js"];
+
 /* Экран входа и регистрации.
    Вход: логин + пароль. Регистрация и восстановление: код приходит в Telegram-бота по ссылке,
    который открывает пользователь (бот привязывает чат к попытке). */
@@ -781,6 +817,7 @@ function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPhone, onR
         to.classList.add('auth-form--in');
         void to.offsetHeight;
         to.classList.remove('auth-form--in');
+        enter(to, 'page');
         onShown?.();
         pending = setTimeout(() => {
           if (myToken !== token) return;
@@ -815,7 +852,7 @@ function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPhone, onR
     $('#tab-register').setAttribute('aria-selected', String(name === 'register'));
     const from = name === 'login' ? regForm : loginForm;
     const to = name === 'login' ? loginForm : regForm;
-    const focusTarget = name === 'login' ? lUser : rPhone;
+    const focusTarget = name === 'login' ? lUser : $('#tab-register');
     switchTab(from, to, { onShown: () => focusTarget.focus({ preventScroll: true }) });
   }
   $('#tab-login').addEventListener('click', () => setTab('login'));
@@ -931,7 +968,16 @@ function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPhone, onR
 
   rPhone.addEventListener('input', () => setFieldError(rPhone, ''));
   // Ссылка на бота нужна сразу: без неё человек не получит номер. Если бот не настроен — кнопку прячем.
-  onLoadBotLink().then((r) => { regBot.href = r.link; }).catch(() => { regBot.hidden = true; });
+  regBot.addEventListener('click', (event) => {
+    if (regBot.getAttribute('aria-disabled') === 'true') event.preventDefault();
+  });
+  onLoadBotLink().then((r) => {
+    regBot.href = r.link;
+    regBot.removeAttribute('aria-disabled');
+    $('#reg-submit').disabled = false;
+  }).catch(() => {
+    showFormError($('#reg-error'), 'Регистрация временно недоступна: не удалось подключиться к боту Aqua. Обновите страницу и попробуйте ещё раз.');
+  });
 
   // Регистрация: номер из бота → код в Telegram → логин и пароль.
   let regRef = '';
@@ -940,7 +986,7 @@ function initAuthView({ onLogin, onLoadBotLink, onSendPhone, onConfirmPhone, onR
     e.preventDefault();
     const err = $('#reg-error'); showFormError(err, '');
     const phone = rPhone.value.replace(/\D/g, '');
-    const pErr = phone.length === 11 ? '' : 'Введите номер из бота, например +7 900 000-00-00.';
+    const pErr = phone.length === 11 ? '' : 'Вставьте 11 цифр идентификатора из сообщения бота Aqua.';
     setFieldError(rPhone, pErr);
     if (pErr) { shake(regForm); haptic.error(); return; }
     setBusy(regBtn, true);
@@ -1362,12 +1408,14 @@ function voicePlayer({ src, duration = 0, wave }) {
 })();
 
 __m["ui/chat-view.js"] = (function () {
+  const { enter } = __m["motion.js"];
   const { $, el, icon } = __m["dom.js"];
   const { state, peerOf, pendingToMessage } = __m["state.js"];
   const { voicePlayer } = __m["ui/voice-player.js"];
   const { avatar } = __m["ui/avatar.js"];
   const { mediaUrl } = __m["api.js"];
   const { timeHM, dayKey, dayLabel, lastSeenText, formatSize } = __m["format.js"];
+
 /* Окно переписки: шапка, лента сообщений, индикатор «печатает…», подгрузка истории. */
 
 
@@ -1469,7 +1517,7 @@ function messageNode(m, opts = {}) {
       (m.edited_at ? 'изменено · ' : '') + timeHM(m.created_at) + (opts.failed ? ' · не отправлено, нажмите, чтобы повторить' : '')));
   const node = el('article', {
     class: `msg msg--${mine ? 'out' : 'in'}${m.meta?.sticker ? ' msg--sticker' : ''}${m.media && !m.meta?.sticker && (m.kind === 'image' || m.kind === 'video') ? ' msg--media' : ''}${opts.animate ? ' is-new' : ''}${opts.pending ? ' is-pending' : ''}${opts.failed ? ' is-failed' : ''}`,
-    dataset: { id: m.id, ...(m.clientId ? { clientId: m.clientId } : {}) },
+    dataset: { sender: m.sender.id, id: m.id, ...(m.clientId ? { clientId: m.clientId } : {}) },
   }, bubble);
   if (m.reactions?.length) node.append(reactionsNode(m.reactions));
   return node;
@@ -1500,7 +1548,7 @@ function setReactions(messageId, reactions) {
 function daySeparator(iso) { return el('div', { class: 'day-sep', text: dayLabel(iso) }); }
 
 /** Добавляет узлы перед индикатором «печатает…» (он всегда последний). */
-function insertNodes(nodes) { nodes.forEach((n) => messagesEl.insertBefore(n, typingEl)); }
+function insertNodes(nodes) { nodes.forEach((n) => { messagesEl.insertBefore(n, typingEl); if (n.matches('.msg')) enter(n, 'message'); }); }
 
 function buildNodes(items, chat, { animate = false } = {}) {
   const nodes = [];
@@ -1553,18 +1601,29 @@ function renderStatus(chat) {
 }
 
 /** Полная перерисовка ленты: загруженные сообщения + отправляемые. */
+function groupBubbles() {
+  for (const node of messagesEl.querySelectorAll('.msg')) {
+    const prev = node.previousElementSibling, next = node.nextElementSibling;
+    node.classList.toggle('is-joined', Boolean(prev?.matches('.msg') && prev.dataset.sender === node.dataset.sender));
+    node.classList.toggle('has-next', Boolean(next?.matches('.msg') && next.dataset.sender === node.dataset.sender));
+  }
+}
+
 function renderMessages(chat) {
   const h = state.history.get(chat.id);
   const items = [...(h?.items ?? []), ...(state.pending.get(chat.id) ?? []).map(pendingToMessage)];
   lastDay = null;
   messagesEl.replaceChildren(...buildNodes(items, chat), typingEl);
+  groupBubbles();
   scrollToBottom();
+  enter(messagesEl, 'page');
 }
 
 /** Добавляет одно сообщение в конец; прокручивает вниз, если пользователь и так внизу (или это его сообщение). */
 function appendMessage(m, chat, { forceScroll = false } = {}) {
   const stick = forceScroll || nearBottom();
   insertNodes(buildNodes([m], chat, { animate: true }));
+  groupBubbles();
   if (stick) scrollToBottom(true);
 }
 
@@ -3884,48 +3943,21 @@ async function copyText(text) {
 __m["ui/splash.js"] = (function () {
   const { $ } = __m["dom.js"];
   const { session } = __m["storage.js"];
-  const { SPLASH_KEY, SPLASH_MAX_MS } = __m["config.js"];
-/* Заставка при входе (assets/start.webm — VP9 с прозрачным фоном: поверх уже видно приложение).
-   Показывается один раз за сессию вкладки. Закрывается по окончанию видео, по тапу, при ошибке
-   воспроизведения или по таймауту — приложение никогда не «застрянет» на заставке. */
-
+  const { SPLASH_KEY } = __m["config.js"];
+/* A brief brand transition; no video surface obscures the entry screen. */
 
 
 
 function initSplash() {
   const splash = $('#splash');
-  const video = $('#splash-video');
   if (!splash) return Promise.resolve();
-
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduced || session.get(SPLASH_KEY)) {
-    splash.remove();
-    return Promise.resolve();
-  }
-  // WebM с прозрачностью умеют Chrome/Edge/Firefox/Android WebView; Safari рисует прозрачное чёрным — там заставку пропускаем
-  const isSafari = /^((?!chrome|chromium|android|crios|fxios).)*safari/i.test(navigator.userAgent);
-  if (isSafari || !video.canPlayType('video/webm; codecs="vp9"')) {
-    splash.remove();
-    return Promise.resolve();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || session.get(SPLASH_KEY)) {
+    splash.remove(); return Promise.resolve();
   }
   session.set(SPLASH_KEY, '1');
-
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      splash.classList.add('is-leaving');                          // плавное растворение
-      setTimeout(() => { splash.remove(); resolve(); }, 700);
-    };
-    video.addEventListener('ended', finish);
-    video.addEventListener('error', finish);
-    splash.addEventListener('click', finish);                      // тап — пропустить
-    setTimeout(finish, SPLASH_MAX_MS);
-    // muted + playsinline обязательны для автозапуска в Safari/iOS и Chrome
-    const started = video.play();
-    if (started?.catch) started.catch(finish);
-  });
+  const animation = splash.animate([{opacity:1},{opacity:0}], {duration:450,easing:'cubic-bezier(.2,.8,.2,1)'});
+  splash.addEventListener('click', () => animation.finish(), {once:true});
+  return animation.finished.catch(() => {}).finally(() => splash.remove());
 }
 
   return { initSplash };
@@ -4837,6 +4869,7 @@ const clearPrev = () => storage.remove(PREV);
 })();
 
 __m["app.js"] = (function () {
+  const { initMotion } = __m["motion.js"];
   const { initSearchMorph } = __m["ui/search-morph.js"];
   const { $ } = __m["dom.js"];
   const { debounce } = __m["dom.js"];
@@ -4876,6 +4909,7 @@ __m["app.js"] = (function () {
   const { initNotifications, askPermissionOnEntry, notifyMessage } = __m["notify.js"];
   const { rememberAccount, forgetAccount, listAccounts, switchAccount, startAddAccount, hasPrevSession, cancelAddAccount, clearPrev } = __m["accounts.js"];
   const { openEditor } = __m["editor/editor-modal.js"];
+
 
 /* Точка входа клиента Aqua: связывает API, WebSocket, состояние и UI-модули. */
 
@@ -5606,6 +5640,8 @@ $('#auth-cancel').addEventListener('click', cancelAddAccount);
 window.__aquaStarted?.();                       // сообщаем стражу (boot-check.js), что модули загрузились
 
 initSearchMorph();
+
+initMotion();
 
   return {};
 })();
