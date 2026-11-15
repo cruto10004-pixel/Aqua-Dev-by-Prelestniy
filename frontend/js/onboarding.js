@@ -4,11 +4,15 @@
   const screens = [...document.querySelectorAll('[data-step]')];
   const labels = ['ДОБРО ПОЖАЛОВАТЬ', 'ВАШЕ СОГЛАСИЕ', 'НОМЕР ОТ БОТА', 'ПОДТВЕРЖДЕНИЕ', 'ВАШ ПРОФИЛЬ', 'ВСЁ ГОТОВО', 'ДЕМО AQUA'];
   let step = 0, moving = false, photoUrl = '', photoRequest = 0;
+  let flow = 'register', successTimer;
+  const demoProfile = {number: '12345678901', name: 'Мира Волна', username: 'mira_wave'};
+  const route = () => flow === 'login' ? [0, 2, 3, 7, 6] : [0, 1, 2, 3, 4, 5, 6];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   function show(next) {
-    if (moving || next < 0 || next >= screens.length) return;
+    if (moving || !Number.isInteger(next) || next < 0 || next >= screens.length) return;
+    clearTimeout(successTimer);
     moving = true;
-    $('.journey').classList.toggle('reverse', next < step);
+    $('.journey').classList.toggle('reverse', route().indexOf(next) < route().indexOf(step));
     document.activeElement?.blur();
     screens[step].classList.add('leaving');
     setTimeout(() => {
@@ -18,19 +22,45 @@
       $('.shell').scrollTop = 0;
       screens[step].hidden = false;
       $('#back').hidden = step === 0;
-      $('#step-label').textContent = labels[step];
-      $('#step-count').textContent = `${String(Math.min(step + 1, 6)).padStart(2, '0')} / 06`;
-      $('#progress-fill').style.width = `${Math.min(step + 1, 6) / 6 * 100}%`;
+      const total = route().length - 1;
+      const position = Math.min(route().indexOf(step) + 1, total);
+      $('#step-label').textContent = step === 7 ? 'ВХОД ПОДТВЕРЖДЁН' : labels[step];
+      $('#step-count').textContent = `${String(position).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+      $('#progress-fill').style.width = `${position / total * 100}%`;
       const heading = screens[step].querySelector('h2');
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
       if (innerWidth <= 700) window.scrollTo({ top: 0, behavior: 'instant' });
       moving = false;
+      if (step === 7) successTimer = setTimeout(() => show(6), reduced.matches ? 900 : 1700);
     }, reduced.matches ? 0 : 220);
   }
-  document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => show(step + 1)));
-  document.querySelectorAll('[data-prev]').forEach(b => b.addEventListener('click', () => show(step - 1)));
-  $('#back').onclick = () => show(step - 1);
+  function begin(nextFlow) {
+    if (moving) return;
+    flow = nextFlow;
+    $('#bot-number').value = '';
+    $('#number-error').textContent = '';
+    $('#bot-number').removeAttribute('aria-invalid');
+    $('#bot-hint').hidden = true;
+    cells.forEach(c => c.value = ''); refreshOtp();
+    const login = flow === 'login';
+    $('[data-step="2"] h2').textContent = login ? 'С возвращением!' : 'Номер от бота';
+    $('[data-step="2"] .lead').textContent = 'Введите целиком номер, полученный от Telegram-бота Aqua. Это не номер телефона и не код подтверждения.';
+    $('[data-step="3"] h2').textContent = login ? 'Подтверждение входа' : 'Подтвердите номер';
+    $('#login-fixture').hidden = !login;
+    $('#home-back').textContent = login ? 'На стартовый экран' : 'Вернуться к профилю';
+    show(login ? 2 : 1);
+  }
+  function previous() {
+    const previousStep = route()[route().indexOf(step) - 1];
+    if (step === 3 || step === 7) { cells.forEach(c => c.value = ''); refreshOtp(); }
+    show(previousStep);
+  }
+  document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => step === 0 ? begin('register') : show(route()[route().indexOf(step) + 1])));
+  document.querySelectorAll('[data-prev]').forEach(b => b.addEventListener('click', previous));
+  $('#back').onclick = previous;
+  $('#start-login').onclick = () => begin('login');
+  $('#home-back').onclick = () => show(flow === 'login' ? 0 : 5);
   $('#consent').onchange = e => { $('#policy-next').disabled = !e.target.checked; };
   $('#policy-next').onclick = () => { if ($('#consent').checked) show(2); };
   $('#bot-info').onclick = () => { $('#bot-hint').hidden = !$('#bot-hint').hidden; };
@@ -41,6 +71,11 @@
     $('#number-error').textContent = valid ? '' : 'Введите весь номер от бота: 11 цифр. Для демо: 12345678901.';
     input.setAttribute('aria-invalid', String(!valid));
     if (!valid) { input.focus(); return; }
+    if (flow === 'login' && digits !== demoProfile.number) {
+      $('#number-error').textContent = 'Демо-аккаунт не найден. Для входа используйте номер 12345678901 или вернитесь и создайте аккаунт.';
+      input.setAttribute('aria-invalid', 'true'); input.focus(); return;
+    }
+    cells.forEach(c => c.value = ''); refreshOtp();
     input.value = digits; $('#number-preview').textContent = digits; show(3);
   };
   const otp = $('.otp');
@@ -77,7 +112,12 @@
       $('#otp-error').textContent = 'Для прототипа используйте тестовый код 123456.';
       otp.classList.add('invalid'); cells.forEach(c => c.setAttribute('aria-invalid', 'true')); cells[0].focus(); return;
     }
-    show(4);
+    if (flow === 'login') {
+      $('#home-name').textContent = demoProfile.name;
+      $('#home-username').textContent = '@' + demoProfile.username;
+      $('#home-avatar').replaceChildren(Object.assign(document.createElement('span'), {textContent: 'М'}));
+      show(7);
+    } else show(4);
   };
   function paintAvatar(target) {
     target.replaceChildren();
@@ -112,7 +152,8 @@
     [$('#display-name'), $('#username')].forEach(c => c.setAttribute('aria-invalid', String(c === invalid)));
     if (invalid) { invalid.focus(); return; }
     $('#final-name').textContent = `${name}!`; $('#final-username').textContent = `@${user}`; $('#final-bio').textContent = $('#bio').value.trim();
-    paintAvatar($('#final-avatar')); show(5);
+    paintAvatar($('#final-avatar')); paintAvatar($('#home-avatar'));
+    $('#home-name').textContent = name; $('#home-username').textContent = '@' + user; show(5);
   };
   document.querySelectorAll('.ambient i').forEach((el, i) => {
     const values = {'--x': `${(i * 37 + 7) % 100}%`, '--y': `${(i * 23 + 3) % 100}%`, '--size': `${12 + (i * 13) % 42}px`, '--alpha': `${.035 + (i % 4) * .019}`, '--radius': i % 3 === 0 ? '50%' : '22%', '--duration': `${18 + i % 9 * 3}s`, '--delay': `${-i * 3}s`, '--dx': `${i % 2 ? -40 : 50}px`, '--dy': `${-60 - i % 5 * 20}px`, '--spin': `${i % 2 ? 65 : -80}deg`};
@@ -132,6 +173,7 @@
   $('#photo-choose').onclick = () => $('#photo').click();
   $('#photo-delete').onclick = () => { $('#remove-photo').click(); paintAvatar($('#photo-large')); };
   $('#restart').onclick = () => {
+    clearTimeout(successTimer);
     $('#remove-photo').click(); document.querySelectorAll('form').forEach(f => f.reset());
     $('#consent').checked = false; $('#policy-next').disabled = true; $('#bot-hint').hidden = true;
     document.querySelectorAll('.error').forEach(e => e.textContent = '');
