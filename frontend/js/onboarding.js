@@ -81,36 +81,72 @@
   const otp = $('.otp');
   for (let i = 0; i < 6; i++) {
     const input = document.createElement('input');
-    input.type = 'text'; input.inputMode = 'numeric'; input.maxLength = 1;
+    input.type = 'text'; input.inputMode = 'none'; input.readOnly = true; input.maxLength = 1;
     input.autocomplete = i === 0 ? 'one-time-code' : 'off';
     input.setAttribute('aria-label', `Цифра ${i + 1}`);
     input.setAttribute('aria-describedby', 'otp-error');
     otp.append(input);
   }
   const cells = [...otp.children];
-  function refreshOtp() { otp.classList.remove('invalid'); $('#otp-error').textContent = ''; cells.forEach(c => { c.classList.toggle('filled', !!c.value); c.removeAttribute('aria-invalid'); }); }
+  let activeCell = 0, editingCell = false;
+  const keypad = $('.keypad');
+  for (const value of ['1','2','3','4','5','6','7','8','9','delete','0']) {
+    const key = document.createElement('button'); key.type = 'button'; key.className = 'keypad-key'; key.dataset.key = value;
+    if (value === 'delete') { key.setAttribute('aria-label', 'Удалить последнюю цифру'); key.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-7-7z" fill="currentColor" stroke="none"/></svg>'; }
+    else key.textContent = value;
+    key.addEventListener('click', () => { if (value === 'delete') deleteDigit(); else typeDigit(value); });
+    keypad.insertBefore(key, $('.keypad-confirm'));
+  }
+  function selectCell(index, editing = false) {
+    activeCell = index; editingCell = editing;
+    cells.forEach((c, i) => c.classList.toggle('is-active', i === index));
+    cells[index].focus({preventScroll: true});
+  }
+  function typeDigit(value) {
+    if (moving || step !== 3) return;
+    const index = editingCell ? activeCell : cells.findIndex(c => !c.value);
+    if (index < 0) return;
+    cells[index].value = value; refreshOtp();
+    const next = cells.findIndex(c => !c.value);
+    selectCell(next < 0 ? index : next);
+  }
+  function deleteDigit() {
+    const index = cells.findLastIndex(c => c.value);
+    if (index < 0) { selectCell(0); return; }
+    cells[index].value = ''; refreshOtp(); selectCell(index);
+  }
+  $('#otp-paste').onclick = async () => {
+    try { const text = await navigator.clipboard.readText(); if (!/\d/.test(text)) throw Error(); insertCode(text, 0); }
+    catch { $('#otp-error').textContent = 'Не удалось вставить код. Разрешите доступ к буферу или введите цифры на клавиатуре ниже.'; }
+  };
+  function refreshOtp() {
+    $('.keypad-confirm').disabled = cells.some(c => !c.value);
+    if (cells.every(c => !c.value)) { activeCell = 0; editingCell = false; }
+    cells.forEach((c, i) => c.classList.toggle('is-active', i === activeCell)); otp.classList.remove('invalid'); $('#otp-error').textContent = ''; cells.forEach(c => { c.classList.toggle('filled', !!c.value); c.removeAttribute('aria-invalid'); }); }
   function insertCode(value, start) {
     const digits = value.replace(/\D/g, '').slice(0, 6);
     if (!digits) return;
     if (digits.length === 6) start = 0;
     [...digits].forEach((d, i) => { if (cells[start + i]) cells[start + i].value = d; });
-    refreshOtp(); cells[Math.min(start + digits.length, 5)].focus();
+    refreshOtp(); selectCell(Math.min(start + digits.length, 5));
   }
   cells.forEach((c, i) => {
     c.addEventListener('input', () => { const v = c.value; c.value = ''; insertCode(v, i); refreshOtp(); });
     c.addEventListener('paste', e => { e.preventDefault(); insertCode(e.clipboardData.getData('text'), i); });
-    c.addEventListener('focus', () => c.select());
+    c.addEventListener('click', () => selectCell(i, !!c.value));
     c.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !c.value && i > 0) { e.preventDefault(); cells[i - 1].value = ''; cells[i - 1].focus(); refreshOtp(); }
-      if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); cells[i - 1].focus(); }
-      if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); cells[i + 1].focus(); }
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); typeDigit(e.key); }
+      if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); deleteDigit(); }
+      if (e.key === 'Enter' && !$('.keypad-confirm').disabled) { e.preventDefault(); $('#otp-form').requestSubmit(); }
+      if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); selectCell(i - 1, !!cells[i - 1].value); }
+      if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); selectCell(i + 1, !!cells[i + 1].value); }
     });
   });
   $('#otp-form').onsubmit = e => {
     e.preventDefault();
     if (cells.map(c => c.value).join('') !== '123456') {
       $('#otp-error').textContent = 'Для прототипа используйте тестовый код 123456.';
-      otp.classList.add('invalid'); cells.forEach(c => c.setAttribute('aria-invalid', 'true')); cells[0].focus(); return;
+      otp.classList.add('invalid'); cells.forEach(c => c.setAttribute('aria-invalid', 'true')); selectCell(0, true); return;
     }
     if (flow === 'login') {
       $('#home-name').textContent = demoProfile.name;
