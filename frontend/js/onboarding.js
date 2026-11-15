@@ -2,11 +2,11 @@
 (() => {
   const $ = s => document.querySelector(s);
   const screens = [...document.querySelectorAll('[data-step]')];
-  const labels = ['ДОБРО ПОЖАЛОВАТЬ', 'ВАШЕ СОГЛАСИЕ', 'НОМЕР ОТ БОТА', 'ПОДТВЕРЖДЕНИЕ', 'ВАШ ПРОФИЛЬ', 'ВСЁ ГОТОВО', 'ДЕМО AQUA', 'ВХОД ПОДТВЕРЖДЁН', 'УЧЁТНАЯ ЗАПИСЬ', 'НОВЫЙ ПАРОЛЬ', 'ВОССТАНОВЛЕНИЕ ЗАВЕРШЕНО'];
+  const labels = ['ДОБРО ПОЖАЛОВАТЬ', 'ВАШЕ СОГЛАСИЕ', 'НОМЕР ОТ БОТА', 'ПОДТВЕРЖДЕНИЕ', 'ВАШ ПРОФИЛЬ', 'ВСЁ ГОТОВО', 'ДЕМО AQUA'];
   let step = 0, moving = false, photoUrl = '', photoRequest = 0;
-  let flow = 'login', successTimer;
+  let flow = 'register', successTimer;
   const demoProfile = {number: '12345678901', name: 'Мира Волна', username: 'mira_wave'};
-  const route = () => flow === 'login' ? [0, 7, 6] : flow === 'recover' ? [0, 2, 3, 9, 10] : [0, 1, 2, 3, 8, 4, 5, 6];
+  const route = () => flow === 'login' ? [0, 2, 7, 6] : [0, 1, 2, 3, 4, 5, 6];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   function show(next) {
     if (moving || !Number.isInteger(next) || next < 0 || next >= screens.length) return;
@@ -18,15 +18,14 @@
     setTimeout(() => {
       screens[step].hidden = true;
       screens[step].classList.remove('leaving');
+      if (step === 2 && flow === 'login') $('#login-password').value = '';
       step = next;
-      if (next === 0) { flow = 'login'; document.querySelectorAll('[data-password]').forEach(i => i.value = ''); }
-      document.querySelectorAll('input[type=password], input[data-password]').forEach(input => { input.type = 'password'; input.nextElementSibling?.setAttribute('aria-pressed', 'false'); if(input.nextElementSibling?.matches('.password-toggle')) input.nextElementSibling.textContent = 'Показать'; });
       $('.shell').scrollTop = 0;
       screens[step].hidden = false;
-      $('#back').hidden = [0, 6, 10].includes(step);
+      $('#back').hidden = step === 0;
       const total = route().length - 1;
       const position = Math.min(route().indexOf(step) + 1, total);
-      $('#step-label').textContent = step === 7 ? 'ВХОД ПОДТВЕРЖДЁН' : labels[step];
+      $('#step-label').textContent = step === 2 && flow === 'login' ? 'ВХОД' : step === 7 ? 'ВХОД ПОДТВЕРЖДЁН' : labels[step];
       $('#step-count').textContent = `${String(position).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
       $('#progress-fill').style.width = `${position / total * 100}%`;
       const heading = screens[step].querySelector('h2');
@@ -40,20 +39,22 @@
   function begin(nextFlow) {
     if (moving) return;
     flow = nextFlow;
-    document.querySelectorAll('.error').forEach(e => e.textContent = '');
     $('#bot-number').value = '';
     $('#number-error').textContent = '';
     $('#bot-number').removeAttribute('aria-invalid');
     $('#bot-hint').hidden = true;
     cells.forEach(c => c.value = ''); refreshOtp();
-    const login = flow === 'recover';
-    $('[data-step="2"] h2').textContent = login ? 'Восстановление доступа' : 'Номер от бота';
-    $('[data-step="2"] .lead').textContent = 'Введите целиком номер, полученный от Telegram-бота Aqua. Это не номер телефона и не код подтверждения.';
-    $('[data-step="3"] h2').textContent = login ? 'Подтверждение восстановления' : 'Подтвердите номер';
+    const login = flow === 'login';
+    $('[data-step="2"] h2').textContent = login ? 'С возвращением!' : 'Номер от бота';
+    $('[data-step="2"] .lead').textContent = login ? 'Введите логин и пароль для демонстрационного входа.' : 'Введите целиком номер, полученный от Telegram-бота Aqua. Это не номер телефона и не код подтверждения.';
+    $('#login-form').hidden = !login; $('#number-form').hidden = login;
+    $('[data-step="2"] .footnote').textContent = login ? 'Демонстрация · данные никуда не отправляются' : 'Демонстрация · номер никуда не отправляется';
+    $('#login-fixture').textContent = 'Демо-вход: mira_wave / Aqua2026. Настоящая сессия не создаётся.';
+    $('#login-error').textContent = ''; $('#login-password').value = '';
+    $('[data-step="7"] .lead').textContent = 'Демо-логин и пароль приняты. Открываем демонстрационный профиль.';
+    $('[data-step="3"] h2').textContent = login ? 'Подтверждение входа' : 'Подтвердите номер';
     $('#login-fixture').hidden = !login;
-    if (login) $('[data-step="2"] .lead').textContent = 'Для восстановления введите номер, полученный от Telegram-бота Aqua. Демонстрация: код не отправляется.';
     $('#home-back').textContent = login ? 'На стартовый экран' : 'Вернуться к профилю';
-    document.querySelectorAll('[data-password]').forEach(i => i.value = '');
     show(login ? 2 : 1);
   }
   function previous() {
@@ -64,13 +65,21 @@
   document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => step === 0 ? begin('register') : show(route()[route().indexOf(step) + 1])));
   document.querySelectorAll('[data-prev]').forEach(b => b.addEventListener('click', previous));
   $('#back').onclick = previous;
-  $('#create-account').onclick = () => begin('register');
-  $('#forgot-password').onclick = () => begin('recover');
-  $('#return-login').onclick = () => show(0);
+  $('#start-login').onclick = () => begin('login');
   $('#home-back').onclick = () => show(flow === 'login' ? 0 : 5);
   $('#consent').onchange = e => { $('#policy-next').disabled = !e.target.checked; };
   $('#policy-next').onclick = () => { if ($('#consent').checked) show(2); };
   $('#bot-info').onclick = () => { $('#bot-hint').hidden = !$('#bot-hint').hidden; };
+  $('#login-form').onsubmit = e => {
+    e.preventDefault();
+    const name = $('#login-name').value.trim(), password = $('#login-password').value;
+    $('#login-error').textContent = !name || !password ? 'Введите логин и пароль.' : name !== demoProfile.username || password !== 'Aqua2026' ? 'Неверный логин или пароль для демо.' : '';
+    if ($('#login-error').textContent) return;
+    $('#home-name').textContent = demoProfile.name;
+    $('#home-username').textContent = '@' + demoProfile.username;
+    $('#home-avatar').replaceChildren(Object.assign(document.createElement('span'), {textContent: 'М'}));
+    show(7);
+  };
   $('#number-form').onsubmit = e => {
     e.preventDefault();
     const input = $('#bot-number'), digits = input.value.replace(/\s/g, '');
@@ -78,10 +87,6 @@
     $('#number-error').textContent = valid ? '' : 'Введите весь номер от бота: 11 цифр. Для демо: 12345678901.';
     input.setAttribute('aria-invalid', String(!valid));
     if (!valid) { input.focus(); return; }
-    if (flow === 'recover' && digits !== demoProfile.number) {
-      $('#number-error').textContent = 'Демо-аккаунт не найден. Для входа используйте номер 12345678901 или вернитесь и создайте аккаунт.';
-      input.setAttribute('aria-invalid', 'true'); input.focus(); return;
-    }
     cells.forEach(c => c.value = ''); refreshOtp();
     input.value = digits; $('#number-preview').textContent = digits; show(3);
   };
@@ -155,7 +160,7 @@
       $('#otp-error').textContent = 'Для прототипа используйте тестовый код 123456.';
       otp.classList.add('invalid'); cells.forEach(c => c.setAttribute('aria-invalid', 'true')); selectCell(0, true); return;
     }
-    show(flow === 'recover' ? 9 : 8);
+    show(4);
   };
   function paintAvatar(target) {
     target.replaceChildren();
@@ -184,45 +189,14 @@
   $('#profile-form').onsubmit = e => {
     e.preventDefault();
     const name = $('#display-name').value.trim(), user = $('#username').value.trim();
-    let invalid = !name ? $('#display-name') : null;
+    let invalid = null;
+    if (!name) invalid = $('#display-name'); else if (!/^[a-zA-Z0-9_]{3,24}$/.test(user)) invalid = $('#username');
     $('#profile-error').textContent = !name ? 'Как к вам обращаться? Укажите имя или никнейм.' : invalid ? 'Username: от 3 до 24 символов — латиница, цифры и _.' : '';
     [$('#display-name'), $('#username')].forEach(c => c.setAttribute('aria-invalid', String(c === invalid)));
     if (invalid) { invalid.focus(); return; }
     $('#final-name').textContent = `${name}!`; $('#final-username').textContent = `@${user}`; $('#final-bio').textContent = $('#bio').value.trim();
-    $('#reg-password').value = ''; $('#reg-repeat').value = '';
     paintAvatar($('#final-avatar')); paintAvatar($('#home-avatar'));
     $('#home-name').textContent = name; $('#home-username').textContent = '@' + user; show(5);
-  };
-  // All credentials below are disposable demo fixtures, never a server session.
-  function passwordError(password, repeat) {
-    if ([...password].length < 8 || !/[a-z]/.test(password) || !/[0-9]/.test(password)) return 'Нужны минимум 8 символов, строчная латинская буква и цифра.';
-    if (new TextEncoder().encode(password).length > 72) return 'Пароль слишком длинный: максимум 72 байта.';
-    if (password !== repeat) return 'Пароли не совпадают.';
-    return '';
-  }
-  document.querySelectorAll('input[type=password]').forEach(input => {
-    input.dataset.password = '';
-    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'password-toggle'; toggle.textContent = 'Показать'; toggle.setAttribute('aria-label', 'Показать или скрыть: ' + input.parentElement.firstChild.textContent); toggle.setAttribute('aria-pressed', 'false');
-    toggle.onclick = () => { const reveal = input.type === 'password'; input.type = reveal ? 'text' : 'password'; toggle.textContent = reveal ? 'Скрыть' : 'Показать'; toggle.setAttribute('aria-pressed', String(reveal)); };
-    input.after(toggle);
-  });
-  $('#login-form').onsubmit = e => {
-    e.preventDefault();
-    const name = $('#login-name').value.trim(), password = $('#login-password').value;
-    $('#login-error').textContent = !name || !password ? 'Введите логин и пароль.' : name !== demoProfile.username || password !== 'Aqua2026' ? 'Неверный демо-логин или пароль. Используйте mira_wave / Aqua2026.' : '';
-    if ($('#login-error').textContent) return;
-    flow = 'login'; $('#login-password').value = '';
-    $('#home-name').textContent = demoProfile.name; $('#home-username').textContent = '@' + demoProfile.username;
-    $('#home-avatar').replaceChildren(Object.assign(document.createElement('span'), {textContent: 'М'})); show(7);
-  };
-  $('#credentials-form').onsubmit = e => {
-    e.preventDefault();
-    $('#credentials-error').textContent = !/^[A-Za-z0-9_]{3,32}$/.test($('#username').value.trim()) ? 'Логин: 3–32 символа, латиница, цифры или _.' : passwordError($('#reg-password').value, $('#reg-repeat').value);
-    if (!$('#credentials-error').textContent) show(4);
-  };
-  $('#reset-form').onsubmit = e => {
-    e.preventDefault(); $('#reset-error').textContent = passwordError($('#reset-password').value, $('#reset-repeat').value);
-    if (!$('#reset-error').textContent) { $('#reset-password').value = ''; $('#reset-repeat').value = ''; show(10); }
   };
   document.querySelectorAll('.ambient i').forEach((el, i) => {
     const values = {'--x': `${(i * 37 + 7) % 100}%`, '--y': `${(i * 23 + 3) % 100}%`, '--size': `${12 + (i * 13) % 42}px`, '--alpha': `${.035 + (i % 4) * .019}`, '--radius': i % 3 === 0 ? '50%' : '22%', '--duration': `${18 + i % 9 * 3}s`, '--delay': `${-i * 3}s`, '--dx': `${i % 2 ? -40 : 50}px`, '--dy': `${-60 - i % 5 * 20}px`, '--spin': `${i % 2 ? 65 : -80}deg`};
