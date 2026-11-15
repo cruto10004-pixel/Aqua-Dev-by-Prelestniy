@@ -8,11 +8,14 @@
   function show(next) {
     if (moving || next < 0 || next >= screens.length) return;
     moving = true;
+    $('.journey').classList.toggle('reverse', next < step);
+    document.activeElement?.blur();
     screens[step].classList.add('leaving');
     setTimeout(() => {
       screens[step].hidden = true;
       screens[step].classList.remove('leaving');
       step = next;
+      $('.shell').scrollTop = 0;
       screens[step].hidden = false;
       $('#back').hidden = step === 0;
       $('#step-label').textContent = labels[step];
@@ -93,7 +96,7 @@
     try { await image.decode(); } catch { URL.revokeObjectURL(next); if (request !== photoRequest) return; $('#photo-error').textContent = 'Не удалось прочитать изображение. Выберите другое фото.'; e.target.value = ''; return; }
     if (request !== photoRequest) { URL.revokeObjectURL(next); return; }
     if (photoUrl) URL.revokeObjectURL(photoUrl);
-    photoUrl = next; paintAvatar($('#avatar-preview')); $('#remove-photo').hidden = false;
+    photoUrl = next; paintAvatar($('#avatar-preview')); if ($('#photo-dialog').open) paintAvatar($('#photo-large')); $('#remove-photo').hidden = false;
   };
   $('#remove-photo').onclick = () => {
     photoRequest++;
@@ -111,6 +114,23 @@
     $('#final-name').textContent = `${name}!`; $('#final-username').textContent = `@${user}`; $('#final-bio').textContent = $('#bio').value.trim();
     paintAvatar($('#final-avatar')); show(5);
   };
+  document.querySelectorAll('.ambient i').forEach((el, i) => {
+    const values = {'--x': `${(i * 37 + 7) % 100}%`, '--y': `${(i * 23 + 3) % 100}%`, '--size': `${12 + (i * 13) % 42}px`, '--alpha': `${.035 + (i % 4) * .019}`, '--radius': i % 3 === 0 ? '50%' : '22%', '--duration': `${18 + i % 9 * 3}s`, '--delay': `${-i * 3}s`, '--dx': `${i % 2 ? -40 : 50}px`, '--dy': `${-60 - i % 5 * 20}px`, '--spin': `${i % 2 ? 65 : -80}deg`};
+    Object.entries(values).forEach(([k, v]) => el.style.setProperty(k, v));
+  });
+  // Adapt the app viewport to the actual space above the system keyboard.
+  const viewport = window.visualViewport;
+  function resizeViewport() { document.documentElement.style.setProperty('--app-height', `${viewport?.height || innerHeight}px`); }
+  viewport?.addEventListener('resize', resizeViewport);
+  window.addEventListener('resize', resizeViewport);
+  resizeViewport();
+  const photoDialog = $('#photo-dialog');
+  $('.upload').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#photo').click(); } });
+  $('#avatar-preview').onclick = () => { paintAvatar($('#photo-large')); photoDialog.showModal(); };
+  $('.dialog-close').onclick = () => photoDialog.close();
+  $('#photo-done').onclick = () => photoDialog.close();
+  $('#photo-choose').onclick = () => $('#photo').click();
+  $('#photo-delete').onclick = () => { $('#remove-photo').click(); paintAvatar($('#photo-large')); };
   $('#restart').onclick = () => {
     $('#remove-photo').click(); document.querySelectorAll('form').forEach(f => f.reset());
     $('#consent').checked = false; $('#policy-next').disabled = true; $('#bot-hint').hidden = true;
