@@ -25,7 +25,7 @@ const AquaLocale=(()=>{
  'В этом разделе появятся вложения текущей переписки.':'Attachments from this conversation will appear here.',
  'Удерживайте сообщение в переписке и выберите «Закрепить».':'Hold a message and choose Pin.',
  'Фото, видео, документы и ссылки':'Photos, videos, documents and links',
- 'Локальный демокаталог: @marina · +79990000001 и @artem · +79990000002. Поиска по реальным аккаунтам нет.':'Local demo directory: @marina · +79990000001 and @artem · +79990000002. Real account search is unavailable.',
+ 'Поиск по реальным аккаунтам заработает после подключения сервера.':'Account search will work once the server is connected.',
  'Заметки и файлы':'Notes and files'
  };
  const originals=new WeakMap();let queued=false;

@@ -9,6 +9,9 @@ const AquaSearch = (() => {
   let historyOwned = false,
     releaseHistory = null,
     historyPending = null;
+  let pointerMode = false;
+  document.addEventListener("pointerdown", () => (pointerMode = true), true);
+  document.addEventListener("keydown", () => (pointerMode = false), true);
   const mobile = () => matchMedia("(max-width:700px)").matches;
   const dock = () => document.querySelector(".mobile-nav");
   const field = () => document.querySelector(".sidebar-search");
@@ -45,7 +48,7 @@ const AquaSearch = (() => {
     if (nav) syncDock(nav, false);
     const visible = phase !== "closed";
     box.classList.toggle("search-active", visible);
-    control.value = query;
+    if (control.value !== query) control.value = query;
     control.readOnly = !visible;
     control.setAttribute("aria-label", "Поиск чатов");
     control.setAttribute("aria-expanded", String(visible));
@@ -108,8 +111,12 @@ const AquaSearch = (() => {
               { opacity: 0, transform: "translateX(8px)" },
               { opacity: 1, transform: "none" },
             ]
-          : [{ opacity: 1 }, { opacity: 0 }],
-        opening ? 170 : 110,
+          : [
+              { opacity: 1, offset: 0 },
+              { opacity: 0, offset: 0.42 },
+              { opacity: 0, offset: 1 },
+            ],
+        opening ? 170 : 260,
         opening ? 100 : 0,
       ),
       AquaMotion.play(
@@ -119,8 +126,12 @@ const AquaSearch = (() => {
               { opacity: 0, transform: "scale(.75)" },
               { opacity: 1, transform: "none" },
             ]
-          : [{ opacity: 1 }, { opacity: 0, transform: "scale(.75)" }],
-        opening ? 170 : 110,
+          : [
+              { opacity: 1, transform: "none", offset: 0 },
+              { opacity: 0, transform: "scale(.75)", offset: 0.42 },
+              { opacity: 0, transform: "scale(.75)", offset: 1 },
+            ],
+        opening ? 170 : 260,
         opening ? 110 : 0,
       ),
       AquaMotion.play(
@@ -224,7 +235,7 @@ const AquaSearch = (() => {
     renderList("");
     const list = document.querySelector("#chat-list");
     if (list) list.scrollTop = savedScroll;
-    if (!instant) trigger()?.focus({ preventScroll: true });
+    if (!instant && !pointerMode) trigger()?.focus({ preventScroll: true });
     if (fromBack) historyOwned = false;
     else await dropHistory();
   }
@@ -233,7 +244,6 @@ const AquaSearch = (() => {
       if(event.target.id!=="chat-search")return;
       event.stopImmediatePropagation();
       clearTimeout(filterTimer);
-      if(event.isComposing)return;
       const value=event.target.value;
       document.querySelector("#chat-list")?.setAttribute("aria-busy","true");
       field()?.classList.add("search-pending");

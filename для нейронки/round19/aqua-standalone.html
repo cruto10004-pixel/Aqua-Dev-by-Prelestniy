@@ -3762,6 +3762,9 @@ const AquaSearch = (() => {
   let historyOwned = false,
     releaseHistory = null,
     historyPending = null;
+  let pointerMode = false;
+  document.addEventListener("pointerdown", () => (pointerMode = true), true);
+  document.addEventListener("keydown", () => (pointerMode = false), true);
   const mobile = () => matchMedia("(max-width:700px)").matches;
   const dock = () => document.querySelector(".mobile-nav");
   const field = () => document.querySelector(".sidebar-search");
@@ -3798,7 +3801,7 @@ const AquaSearch = (() => {
     if (nav) syncDock(nav, false);
     const visible = phase !== "closed";
     box.classList.toggle("search-active", visible);
-    control.value = query;
+    if (control.value !== query) control.value = query;
     control.readOnly = !visible;
     control.setAttribute("aria-label", "Поиск чатов");
     control.setAttribute("aria-expanded", String(visible));
@@ -3861,8 +3864,12 @@ const AquaSearch = (() => {
               { opacity: 0, transform: "translateX(8px)" },
               { opacity: 1, transform: "none" },
             ]
-          : [{ opacity: 1 }, { opacity: 0 }],
-        opening ? 170 : 110,
+          : [
+              { opacity: 1, offset: 0 },
+              { opacity: 0, offset: 0.42 },
+              { opacity: 0, offset: 1 },
+            ],
+        opening ? 170 : 260,
         opening ? 100 : 0,
       ),
       AquaMotion.play(
@@ -3872,8 +3879,12 @@ const AquaSearch = (() => {
               { opacity: 0, transform: "scale(.75)" },
               { opacity: 1, transform: "none" },
             ]
-          : [{ opacity: 1 }, { opacity: 0, transform: "scale(.75)" }],
-        opening ? 170 : 110,
+          : [
+              { opacity: 1, transform: "none", offset: 0 },
+              { opacity: 0, transform: "scale(.75)", offset: 0.42 },
+              { opacity: 0, transform: "scale(.75)", offset: 1 },
+            ],
+        opening ? 170 : 260,
         opening ? 110 : 0,
       ),
       AquaMotion.play(
@@ -3977,7 +3988,7 @@ const AquaSearch = (() => {
     renderList("");
     const list = document.querySelector("#chat-list");
     if (list) list.scrollTop = savedScroll;
-    if (!instant) trigger()?.focus({ preventScroll: true });
+    if (!instant && !pointerMode) trigger()?.focus({ preventScroll: true });
     if (fromBack) historyOwned = false;
     else await dropHistory();
   }
@@ -3986,7 +3997,6 @@ const AquaSearch = (() => {
       if(event.target.id!=="chat-search")return;
       event.stopImmediatePropagation();
       clearTimeout(filterTimer);
-      if(event.isComposing)return;
       const value=event.target.value;
       document.querySelector("#chat-list")?.setAttribute("aria-busy","true");
       field()?.classList.add("search-pending");
@@ -4753,7 +4763,7 @@ const AquaPages = (() => {
   function body(page) {
     const c=chat();
     if(page==='peer') return `<div class="peer-hero">${avatar(c)}<h2>${esc(c.name)}</h2><p>${esc(chatSubtitle(c))}</p></div><div class="peer-actions">${control(icon('chats')+'Написать','write')}${!c.group&&!c.channel&&!c.logo&&!c.saved?control(icon('plus')+(c.contact===false?'В контакты':'В контактах'),'add-peer'):''}${control(icon('send')+'Поделиться','share-profile')}</div><h3 class="section-label">О ${c.channel||c.logo?'канале':'собеседнике'}</h3><div class="detail-card"><p>${esc(c.description || (c.group?'Обсуждаем идеи и создаём Aqua вместе.':c.saved?'Ваше личное пространство для заметок.':'Маленькие моменты. Большие воспоминания.'))}</p><span class="page-note">${c.username?'@'+esc(c.username):c.id===1?'@alexandra':'Демонстрационный профиль Aqua'}</span></div><div class="group">${row('image','Медиа и файлы','Фото, видео, документы','media')}${row('pin','Закреплённые сообщения',`${pins(c).length} сообщений`,'pinned')}${c.group?row('contacts','Участники','Контакты этой демонстрации','members'):''}</div><label class="setting-row"><span>Уведомления</span><input type="checkbox" class="toggle" data-peer-mute ${!c.muted?'checked':''} aria-label="Уведомления собеседника"></label>${note('Звонки в этом прототипе не предусмотрены. Все действия выполняются только в текущей вкладке.')}`;
-    if(page==='addcontact') return `<div class="route-intro"><span class="route-symbol">${icon('contacts')}</span><h2>Найдите своих</h2><p>По имени, @username или номеру</p></div><form id="lookup-form">${input('Пользователь','query',model.query||'','id="lookup-query" autocomplete="off" placeholder="Например, @marina или +79990000001" required')}<button class="primary-btn" ${model.loading?'disabled':''}>${model.loading?'Поиск…':'Найти пользователя'}</button></form><div id="lookup-result" aria-live="polite">${lookupResult()}</div>${note('Локальный демокаталог: @marina · +79990000001 и @artem · +79990000002. Поиска по реальным аккаунтам нет.')}`;
+    if(page==='addcontact') return `<div class="route-intro"><span class="route-symbol">${icon('contacts')}</span><h2>Найдите своих</h2><p>По имени, @username или номеру</p></div><form id="lookup-form">${input('Пользователь','query',model.query||'','id="lookup-query" autocomplete="off" placeholder="Имя, @username или номер" required')}<button class="primary-btn" ${model.loading?'disabled':''}>${model.loading?'Поиск…':'Найти пользователя'}</button></form><div id="lookup-result" aria-live="polite">${lookupResult()}</div>${note('Поиск по реальным аккаунтам заработает после подключения сервера.')}`;
     if(page==='media') {
       const types=[['photo','Фото'],['video','Видео'],['file','Файлы'],['voice','Аудио']];
       const kind=model.kind||'photo';
@@ -4774,11 +4784,11 @@ const AquaPages = (() => {
     return '';
   }
   function lookupResult() {
-    if(model.loading)return `<div class="route-empty" role="status">${icon('search')}<p>Ищем в демокаталоге…</p></div>`;
+    if(model.loading)return `<div class="route-empty" role="status">${icon('search')}<p>Ищем…</p></div>`;
     if(model.result) {const c=model.result;return `<div class="detail-card lookup-person">${avatar(c)}<h2>${esc(c.name)}</h2><p>@${esc(c.username)}</p>${model.added?'<p class="success" role="status">Контакт добавлен</p>':control('Добавить контакт','confirm-contact','primary-btn')}</div>`;}
-    return model.searched?empty('Никого не нашли','Проверьте запрос или попробуйте @marina.'):'';
+    return model.searched?empty('Никого не нашли','Поиск по аккаунтам заработает после подключения сервера.'):'';
   }
-  const catalog=[{name:'Марина',username:'marina',phone:'+79990000001',color:'mint',initial:'М'},{name:'Артём',username:'artem',phone:'+79990000002',color:'lilac',initial:'А'}];
+  const catalog=[]; /* Round20: no backend, no fake directory */
   function searchResults() {
     const q=normalizeSearch(model.query); /* Round20: tolerant search + highlight */
     if(!q)return note('Введите текст — результаты появятся здесь.');
@@ -5269,15 +5279,6 @@ const btn = (n, a, cls = "icon-btn", label = n) =>
   `<button type="button" class="${cls}" data-action="${a}" aria-label="${label}" title="${label}">${icon(n)}</button>`;
 const chats = [
   {
-    id: 0,
-    name: "Aqua",
-    sub: "Добро пожаловать. Здесь всё начинается.",
-    time: "14:48",
-    badge: 2,
-    logo: true,
-    pin: true,
-  },
-  {
     id: 1,
     name: "Александра",
     sub: "Мне нравится, как получилось ♡",
@@ -5289,47 +5290,11 @@ const chats = [
   {
     id: 2,
     name: "Избранное",
-    sub: "Вы: Идеи, которые хочется сохранить",
-    time: "13:16",
+    sub: "Сообщения, которые хочется сохранить",
+    time: "",
     initial: "",
     saved: true,
   },
-  {
-    id: 3,
-    name: "Aqua · команда",
-    sub: "Даня: Собрали всё в одном месте",
-    time: "12:41",
-    color: "lilac",
-    initial: "A",
-    badge: 5,
-    group: true,
-  },
-  {
-    id: 4,
-    name: "Михаил",
-    sub: "Фото с выходных уже здесь",
-    time: "11:58",
-    color: "mint",
-    initial: "М",
-  },
-  {
-    id: 5,
-    name: "Дизайн и детали",
-    sub: "Новая коллекция вдохновения",
-    time: "10:24",
-    color: "gold",
-    initial: "Д",
-    channel: true,
-  },
-  {
-    id: 6,
-    name: "София",
-    sub: "Договорились, до завтра!",
-    time: "Вчера",
-    color: "lilac",
-    initial: "С",
-  },
-  { id: 7, name: "Никита", sub: "Отличная идея", time: "Вчера", initial: "Н" },
 ];
 let state = {
   page: "chats",
@@ -5406,7 +5371,7 @@ function normalizeSearch(value) {
 }
 function chatMatches(c, q) {
   if (!q) return true;
-  const hay = normalizeSearch([c.name, c.sub, c.username].filter(Boolean).join(" "));
+  const hay = normalizeSearch([c.name, c.sub, c.username, c.description].filter(Boolean).join(" "));
   return q.split(" ").every((part) => hay.includes(part.replace(/^@+/, "")));
 }
 function highlightMatch(text, q) {
@@ -5467,11 +5432,7 @@ function renderList(query = "") {
       .join("") || '<p class="empty">Чаты не найдены</p>';
 }
 function initialMessages(c) {
-  if (c.saved)
-    return [
-      { text: "Здесь — всё, что хочется оставить под рукой.", out: false },
-      { text: "Идея на выходные: меньше планов, больше моря 🌊", out: true },
-    ];
+  if (c.saved) return [];
   if (c.logo)
     return [
       { text: "Добро пожаловать в Aqua 💧", out: false },
@@ -5914,7 +5875,7 @@ document.addEventListener("click", (e) => {
       '<p class="note">Маленькие моменты. Большие воспоминания.</p><button class="soft-btn" data-action="savepin">Сохранить в избранное</button>',
     );
   else if (a === "savepin") {
-    messages[2] ??= initialMessages(chats[2]);
+    messages[2] ??= initialMessages(chats.find((c) => c.id === 2));
     messages[2].push({
       text: "Маленькие моменты. Большие воспоминания.",
       out: true,
@@ -5942,7 +5903,7 @@ document.addEventListener("click", (e) => {
     modal(
       "Поделиться контактом",
       chats
-        .filter((c) => c.online || c.id === 4)
+        .filter((c) => c.online)
         .map((c) =>
           row("profile", esc(c.name), "Контакт Aqua", "share:" + c.id),
         )
@@ -6392,7 +6353,7 @@ const AquaLocale=(()=>{
  'В этом разделе появятся вложения текущей переписки.':'Attachments from this conversation will appear here.',
  'Удерживайте сообщение в переписке и выберите «Закрепить».':'Hold a message and choose Pin.',
  'Фото, видео, документы и ссылки':'Photos, videos, documents and links',
- 'Локальный демокаталог: @marina · +79990000001 и @artem · +79990000002. Поиска по реальным аккаунтам нет.':'Local demo directory: @marina · +79990000001 and @artem · +79990000002. Real account search is unavailable.',
+ 'Поиск по реальным аккаунтам заработает после подключения сервера.':'Account search will work once the server is connected.',
  'Заметки и файлы':'Notes and files'
  };
  const originals=new WeakMap();let queued=false;
@@ -6654,7 +6615,7 @@ const AquaLocale=(()=>{
     if(!nav||!e.isPrimary||e.button!==0)return;
     contact={nav,id:e.pointerId,rect:nav.getBoundingClientRect()};
     nav.classList.add('surface-held');
-    AquaMotion.play(nav,[{transform:'none'},{transform:'scale(1.008,1.025)'}],160);
+    AquaMotion.play(nav,[{transform:getComputedStyle(nav).transform},{transform:'scale(1.008,1.025)'}],160);
     nav.style.transform=AquaMotion.isEnabled()?'scale(1.008,1.025)':'none';
   });
   document.addEventListener('pointermove',e=>{

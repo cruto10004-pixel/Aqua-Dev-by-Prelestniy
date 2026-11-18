@@ -147,7 +147,7 @@
     if(!nav||!e.isPrimary||e.button!==0)return;
     contact={nav,id:e.pointerId,rect:nav.getBoundingClientRect()};
     nav.classList.add('surface-held');
-    AquaMotion.play(nav,[{transform:'none'},{transform:'scale(1.008,1.025)'}],160);
+    AquaMotion.play(nav,[{transform:getComputedStyle(nav).transform},{transform:'scale(1.008,1.025)'}],160);
     nav.style.transform=AquaMotion.isEnabled()?'scale(1.008,1.025)':'none';
   });
   document.addEventListener('pointermove',e=>{

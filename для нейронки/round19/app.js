@@ -66,15 +66,6 @@ const btn = (n, a, cls = "icon-btn", label = n) =>
   `<button type="button" class="${cls}" data-action="${a}" aria-label="${label}" title="${label}">${icon(n)}</button>`;
 const chats = [
   {
-    id: 0,
-    name: "Aqua",
-    sub: "Добро пожаловать. Здесь всё начинается.",
-    time: "14:48",
-    badge: 2,
-    logo: true,
-    pin: true,
-  },
-  {
     id: 1,
     name: "Александра",
     sub: "Мне нравится, как получилось ♡",
@@ -86,47 +77,11 @@ const chats = [
   {
     id: 2,
     name: "Избранное",
-    sub: "Вы: Идеи, которые хочется сохранить",
-    time: "13:16",
+    sub: "Сообщения, которые хочется сохранить",
+    time: "",
     initial: "",
     saved: true,
   },
-  {
-    id: 3,
-    name: "Aqua · команда",
-    sub: "Даня: Собрали всё в одном месте",
-    time: "12:41",
-    color: "lilac",
-    initial: "A",
-    badge: 5,
-    group: true,
-  },
-  {
-    id: 4,
-    name: "Михаил",
-    sub: "Фото с выходных уже здесь",
-    time: "11:58",
-    color: "mint",
-    initial: "М",
-  },
-  {
-    id: 5,
-    name: "Дизайн и детали",
-    sub: "Новая коллекция вдохновения",
-    time: "10:24",
-    color: "gold",
-    initial: "Д",
-    channel: true,
-  },
-  {
-    id: 6,
-    name: "София",
-    sub: "Договорились, до завтра!",
-    time: "Вчера",
-    color: "lilac",
-    initial: "С",
-  },
-  { id: 7, name: "Никита", sub: "Отличная идея", time: "Вчера", initial: "Н" },
 ];
 let state = {
   page: "chats",
@@ -203,7 +158,7 @@ function normalizeSearch(value) {
 }
 function chatMatches(c, q) {
   if (!q) return true;
-  const hay = normalizeSearch([c.name, c.sub, c.username].filter(Boolean).join(" "));
+  const hay = normalizeSearch([c.name, c.sub, c.username, c.description].filter(Boolean).join(" "));
   return q.split(" ").every((part) => hay.includes(part.replace(/^@+/, "")));
 }
 function highlightMatch(text, q) {
@@ -264,11 +219,7 @@ function renderList(query = "") {
       .join("") || '<p class="empty">Чаты не найдены</p>';
 }
 function initialMessages(c) {
-  if (c.saved)
-    return [
-      { text: "Здесь — всё, что хочется оставить под рукой.", out: false },
-      { text: "Идея на выходные: меньше планов, больше моря 🌊", out: true },
-    ];
+  if (c.saved) return [];
   if (c.logo)
     return [
       { text: "Добро пожаловать в Aqua 💧", out: false },
@@ -711,7 +662,7 @@ document.addEventListener("click", (e) => {
       '<p class="note">Маленькие моменты. Большие воспоминания.</p><button class="soft-btn" data-action="savepin">Сохранить в избранное</button>',
     );
   else if (a === "savepin") {
-    messages[2] ??= initialMessages(chats[2]);
+    messages[2] ??= initialMessages(chats.find((c) => c.id === 2));
     messages[2].push({
       text: "Маленькие моменты. Большие воспоминания.",
       out: true,
@@ -739,7 +690,7 @@ document.addEventListener("click", (e) => {
     modal(
       "Поделиться контактом",
       chats
-        .filter((c) => c.online || c.id === 4)
+        .filter((c) => c.online)
         .map((c) =>
           row("profile", esc(c.name), "Контакт Aqua", "share:" + c.id),
         )

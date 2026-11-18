@@ -132,7 +132,7 @@ const AquaPages = (() => {
   function body(page) {
     const c=chat();
     if(page==='peer') return `<div class="peer-hero">${avatar(c)}<h2>${esc(c.name)}</h2><p>${esc(chatSubtitle(c))}</p></div><div class="peer-actions">${control(icon('chats')+'Написать','write')}${!c.group&&!c.channel&&!c.logo&&!c.saved?control(icon('plus')+(c.contact===false?'В контакты':'В контактах'),'add-peer'):''}${control(icon('send')+'Поделиться','share-profile')}</div><h3 class="section-label">О ${c.channel||c.logo?'канале':'собеседнике'}</h3><div class="detail-card"><p>${esc(c.description || (c.group?'Обсуждаем идеи и создаём Aqua вместе.':c.saved?'Ваше личное пространство для заметок.':'Маленькие моменты. Большие воспоминания.'))}</p><span class="page-note">${c.username?'@'+esc(c.username):c.id===1?'@alexandra':'Демонстрационный профиль Aqua'}</span></div><div class="group">${row('image','Медиа и файлы','Фото, видео, документы','media')}${row('pin','Закреплённые сообщения',`${pins(c).length} сообщений`,'pinned')}${c.group?row('contacts','Участники','Контакты этой демонстрации','members'):''}</div><label class="setting-row"><span>Уведомления</span><input type="checkbox" class="toggle" data-peer-mute ${!c.muted?'checked':''} aria-label="Уведомления собеседника"></label>${note('Звонки в этом прототипе не предусмотрены. Все действия выполняются только в текущей вкладке.')}`;
-    if(page==='addcontact') return `<div class="route-intro"><span class="route-symbol">${icon('contacts')}</span><h2>Найдите своих</h2><p>По имени, @username или номеру</p></div><form id="lookup-form">${input('Пользователь','query',model.query||'','id="lookup-query" autocomplete="off" placeholder="Например, @marina или +79990000001" required')}<button class="primary-btn" ${model.loading?'disabled':''}>${model.loading?'Поиск…':'Найти пользователя'}</button></form><div id="lookup-result" aria-live="polite">${lookupResult()}</div>${note('Локальный демокаталог: @marina · +79990000001 и @artem · +79990000002. Поиска по реальным аккаунтам нет.')}`;
+    if(page==='addcontact') return `<div class="route-intro"><span class="route-symbol">${icon('contacts')}</span><h2>Найдите своих</h2><p>По имени, @username или номеру</p></div><form id="lookup-form">${input('Пользователь','query',model.query||'','id="lookup-query" autocomplete="off" placeholder="Имя, @username или номер" required')}<button class="primary-btn" ${model.loading?'disabled':''}>${model.loading?'Поиск…':'Найти пользователя'}</button></form><div id="lookup-result" aria-live="polite">${lookupResult()}</div>${note('Поиск по реальным аккаунтам заработает после подключения сервера.')}`;
     if(page==='media') {
       const types=[['photo','Фото'],['video','Видео'],['file','Файлы'],['voice','Аудио']];
       const kind=model.kind||'photo';
@@ -153,11 +153,11 @@ const AquaPages = (() => {
     return '';
   }
   function lookupResult() {
-    if(model.loading)return `<div class="route-empty" role="status">${icon('search')}<p>Ищем в демокаталоге…</p></div>`;
+    if(model.loading)return `<div class="route-empty" role="status">${icon('search')}<p>Ищем…</p></div>`;
     if(model.result) {const c=model.result;return `<div class="detail-card lookup-person">${avatar(c)}<h2>${esc(c.name)}</h2><p>@${esc(c.username)}</p>${model.added?'<p class="success" role="status">Контакт добавлен</p>':control('Добавить контакт','confirm-contact','primary-btn')}</div>`;}
-    return model.searched?empty('Никого не нашли','Проверьте запрос или попробуйте @marina.'):'';
+    return model.searched?empty('Никого не нашли','Поиск по аккаунтам заработает после подключения сервера.'):'';
   }
-  const catalog=[{name:'Марина',username:'marina',phone:'+79990000001',color:'mint',initial:'М'},{name:'Артём',username:'artem',phone:'+79990000002',color:'lilac',initial:'А'}];
+  const catalog=[]; /* Round20: no backend, no fake directory */
   function searchResults() {
     const q=normalizeSearch(model.query); /* Round20: tolerant search + highlight */
     if(!q)return note('Введите текст — результаты появятся здесь.');
