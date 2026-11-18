@@ -133,3 +133,4 @@
 .message.search-hit{animation:aqua-search-hit 1.6s ease-out}
 @keyframes aqua-search-hit{0%,30%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#aebfee) 55%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.message.search-hit{animation:none;outline:2px solid var(--accent,#aebfee);outline-offset:2px}}
+.detail-card mark{background:color-mix(in srgb,var(--accent,#aebfee) 30%,transparent);color:inherit;border-radius:4px;padding:0 1px}

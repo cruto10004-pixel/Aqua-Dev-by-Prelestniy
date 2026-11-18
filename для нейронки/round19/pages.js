@@ -159,10 +159,10 @@ const AquaPages = (() => {
   }
   const catalog=[{name:'Марина',username:'marina',phone:'+79990000001',color:'mint',initial:'М'},{name:'Артём',username:'artem',phone:'+79990000002',color:'lilac',initial:'А'}];
   function searchResults() {
-    const q=(model.query||'').trim().toLowerCase();
+    const q=normalizeSearch(model.query); /* Round20: tolerant search + highlight */
     if(!q)return note('Введите текст — результаты появятся здесь.');
-    const found=list().map((m,i)=>({m,i})).filter(({m})=>summary(m).toLowerCase().includes(q));
-    return found.map(({m,i})=>`<button class="detail-card search-hit" data-page-action="pin-jump:${i}"><small>${m.out?'Вы':esc(chat().name)}</small><p>${esc(summary(m))}</p></button>`).join('')||empty('Ничего не найдено','Попробуйте другое слово.');
+    const found=list().map((m,i)=>({m,i})).filter(({m})=>chatMatches({name:summary(m)},q));
+    return (found.length?`<p class="page-note">Найдено: ${found.length}</p>`:'')+found.map(({m,i})=>`<button class="detail-card search-hit" data-page-action="pin-jump:${i}"><small>${m.out?'Вы':esc(chat().name)}</small><p>${highlightMatch(summary(m),q)}</p></button>`).join('')||empty('Ничего не найдено','Попробуйте другое слово.');
   }
   function creation() {
     const d=model.draft, group=d.kind==='group';
