@@ -1,0 +1,147 @@
+/* Local Onest variable: Cyrillic/Latin, 100–900. One file, no remote requests. */
+@font-face {
+  font-family: Aqua Onest;
+  src: url("assets/Onest-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+:root {
+  --font-ui: "Aqua Onest", Manrope, sans-serif;
+  --type-title: 30px;
+  --type-name: 17px;
+  --type-body: 16px;
+  --type-secondary: 14px;
+  --type-label: 13px;
+  --type-caption: 11px;
+  --type-chat-status: 14px;
+  --weight-chat-status: 550;
+  --leading-chat-status: 1.35;
+  --weight-title: 780;
+  --weight-name: 700;
+  --weight-control: 650;
+  --weight-body: 450;
+  --weight-secondary: 450;
+  --leading-title: 1.14;
+  --leading-body: 1.5;
+  --tracking-title: -0.035em;
+  --tracking-name: -0.018em;
+}
+body {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-body);
+  font-synthesis: none;
+}
+h1,
+.side-head h1,
+.page-header h1 {
+  font-size: var(--type-title);
+  font-weight: var(--weight-title);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-title);
+}
+h2,
+.profile-hero h2 {
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+.chat-row .row-copy strong,
+.chat-title strong {
+  font-size: var(--type-name);
+  font-weight: var(--weight-name);
+  letter-spacing: var(--tracking-name);
+  line-height: 1.4;
+}
+.row-copy p {
+  font-size: var(--type-secondary);
+  font-weight: var(--weight-secondary);
+  line-height: 1.45;
+}
+.message {
+  font-weight: var(--weight-body);
+  line-height: var(--leading-body);
+  letter-spacing: -0.008em;
+}
+.setting-row .row-copy strong {
+  font-weight: var(--weight-control);
+  letter-spacing: -0.012em;
+}
+.section-label {
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.soft-btn,
+.message-menu button,
+.tabs button {
+  font-weight: var(--weight-control);
+  letter-spacing: -0.012em;
+}
+.message-menu button {
+  font-size: 15px;
+}
+.field {
+  font-size: var(--type-label);
+  font-weight: var(--weight-control);
+}
+.field input,
+.field textarea,
+.input-pill input {
+  font-weight: var(--weight-body);
+}
+.note,
+.setting-row .row-copy p {
+  font-size: var(--type-label);
+  font-weight: var(--weight-secondary);
+}
+.time,
+.stamp {
+  font-size: var(--type-caption);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.badge {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.nav-capsule button span,
+.nav-capsule button.active span {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.context-preview {
+  font-size: var(--type-secondary);
+  line-height: 1.5;
+  font-weight: 450;
+}
+.avatar {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+/* A temporary inert copy is clipped above the persistent navigation dock. */
+.navigation-outgoing {
+  position: absolute;
+  inset: 0 0 calc(90px + env(safe-area-inset-bottom));
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  background: transparent;
+}
+@media (min-width: 701px) {
+  .navigation-outgoing {
+    display: none;
+  }
+}
+
+/* Header status is readable without changing the 74px mobile header. */
+.chat-title small {
+  font-size: var(--type-chat-status);
+  font-weight: var(--weight-chat-status);
+  line-height: var(--leading-chat-status);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  color: #a7b4cb;
+}

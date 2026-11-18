@@ -1,0 +1,31 @@
+/* Local corrections preserve Aqua's existing layout and palette. */
+.avatar {isolation:isolate;line-height:1;aspect-ratio:1;min-width:0;}
+.avatar-fallback {display:grid;place-items:center;width:100%;height:100%;border-radius:inherit;overflow:hidden;}
+.avatar-fallback svg {width:48%;height:48%;}
+.avatar img {position:absolute;inset:0;display:block;z-index:1;}
+.avatar img[hidden] {display:none;}
+.avatar.online::after {z-index:2;}
+.peer-avatar-button {flex:none;}
+.profile-hero {background:radial-gradient(ellipse at 50% 42%,#38405b40,transparent 72%);overflow:visible;}
+.profile-hero .avatar {border-color:var(--raised,#333b4d);}
+[data-scheme="light"] .profile-hero {background:radial-gradient(ellipse at 50% 42%,#b8c8ed45,transparent 72%);}
+.chat-row .row-copy strong,.chat-title strong,strong.chat-shared {font-size:17px;line-height:1.4;font-weight:700;letter-spacing:-.018em;}
+.chat-title strong {overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,[tabindex]:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+.input-pill:focus-within {box-shadow:inset 0 0 0 1px var(--accent);}
+.detail-header h1 {overflow-wrap:anywhere;}
+.soft-btn {min-height:44px;}
+.page-note {text-wrap:pretty;}
+@media(max-width:700px) {
+  .mobile-nav > [hidden] {display:none!important;}
+  .mobile-nav.without-search {width:calc(100% - 96px);max-width:336px;}
+  .nav-capsule {--surface-light:35%;background:radial-gradient(ellipse at var(--surface-light) 0%,#e0f1ff12,transparent 66%),linear-gradient(145deg,#dbeaff24,#b6d4ff08 45%,#edf5ff14),#18202b70;}
+  .nav-capsule.surface-held {box-shadow:inset 0 1px 0 #ffffff65,inset 0 -2px 6px #c9e6ff18,0 7px 24px #0005;}
+  [data-scheme="light"] .nav-capsule {background:radial-gradient(ellipse at var(--surface-light) 0%,#fff9,transparent 66%),linear-gradient(145deg,#fff9,#f6faff30 55%,#fff6),#dae5f570;}
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+ .nav-capsule {background:#232c3f;}
+ [data-scheme="light"] .nav-capsule {background:#e6edf8;}
+}
+[data-scheme="light"] .profile-hero p {color:var(--muted);}
+[data-scheme="light"] .profile-hero .avatar {box-shadow:0 6px 20px #25344b20;}

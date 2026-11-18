@@ -1,0 +1,8 @@
+@media(max-width:700px) {
+ #app .mobile-nav,#app.detail-open .mobile-nav {display:flex!important;width:calc(100% - 32px);max-width:400px;}
+ .mobile-nav .nav-capsule {flex:none;width:calc(100% - 64px);}
+ .mobile-nav > .square {position:absolute;right:0;}
+ .mobile-nav > .square[hidden] {display:none!important;}
+}
+#workspace {position:relative;}
+.detail-departure {position:absolute;inset:0;z-index:12;pointer-events:none;overflow:hidden;background:var(--bg);}

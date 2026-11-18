@@ -1,0 +1,61 @@
+/* Retained live list under a conversation revealed from the selected row. */
+@media (max-width: 700px) {
+  #app > .sidebar.chat-transition-list {
+    display: flex !important;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    transform-origin: 50% 35%;
+    background: var(--bg);
+    pointer-events: none;
+  }
+  #app > #workspace.chat-transition-surface {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: var(--bg);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+.chat-shared {
+  position: fixed !important;
+  z-index: 30;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  will-change: transform;
+}
+.chat-shared.avatar {
+  font-family: var(--font-ui);
+  font-size: 18px;
+}
+strong.chat-shared {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.4;
+  letter-spacing: -0.018em;
+  color: var(--text);
+}
+
+@media (max-width: 700px) {
+  #app > .sidebar.chat-retained {
+    display: flex !important;
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  #app > .sidebar.chat-transition-list {
+    visibility: visible !important;
+  }
+}
+
+/* The online dot has one owner during the transition and cannot be clipped. */
+.chat-shared.avatar {overflow:visible;}
+.chat-shared.shared-presence::after {display:none;}
+.chat-online-marker {background:#a4ceae;border-radius:50%;box-sizing:border-box;}
