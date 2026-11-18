@@ -1,0 +1,124 @@
+.sidebar-search {
+  position: relative;
+  flex-shrink: 0;
+}
+.sidebar-search:not(.search-active) {
+  cursor: pointer;
+}
+.search-dismiss {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.search-dismiss svg {
+  width: 19px;
+  height: 19px;
+}
+.sidebar-search:not(.search-active) .search-dismiss {
+  visibility: hidden;
+  pointer-events: none;
+}
+.sidebar-search.search-active {
+  box-shadow: inset 0 0 0 1px #b6c6ed55;
+  background: #222936;
+}
+#chat-list {
+  position: relative;
+}
+.search-leaving {
+  pointer-events: none;
+  z-index: 1;
+}
+.search-leaving:before {
+  display: none;
+}
+#chat-list > .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 44px 20px;
+  text-wrap: balance;
+}
+.search-empty-art {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid #ffffff0c;
+  border-radius: 22px;
+  background: #202735;
+  margin-bottom: 7px;
+  color: var(--accent);
+}
+#chat-list > .empty strong {
+  font-size: 17px;
+  color: var(--text);
+  font-weight: 650;
+}
+#chat-list > .empty > span:last-child {
+  max-width: 240px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* The actual field is a child of the dock. Its origin never leaves this area. */
+@media (max-width: 700px) {
+  .sidebar > .sidebar-search {
+    display: none !important;
+  }
+  .mobile-nav {
+    bottom: calc(
+      var(--search-keyboard-inset, 0px) + max(10px, env(safe-area-inset-bottom))
+    );
+  }
+  .mobile-nav > .sidebar-search {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0 10px 0 18px;
+    height: 70px;
+    border-radius: 25px;
+    background: #222936;
+    border: 1px solid #485673;
+    gap: 8px;
+    z-index: 3;
+    visibility: hidden;
+    pointer-events: none;
+    box-shadow: 0 8px 30px #0005;
+    clip-path: inset(0 0 0 0 round 25px);
+  }
+  .mobile-nav.dock-search-active > .sidebar-search {
+    visibility: visible;
+    pointer-events: auto;
+  }
+  .mobile-nav > .sidebar-search > svg {
+    width: 21px;
+    height: 21px;
+    flex-shrink: 0;
+  }
+  .mobile-nav > .sidebar-search input {
+    flex: 1;
+    width: 0;
+    height: 100%;
+    font-size: 16px;
+  }
+  .mobile-nav .search-dismiss {
+    width: 44px;
+    height: 44px;
+    visibility: visible;
+  }
+  .mobile-nav.dock-search-active > .square {
+    visibility: hidden;
+  }
+  .mobile-nav.dock-search-active .nav-capsule {
+    opacity: 0;
+  }
+}
+/* Local filtering is debounced; the field exposes pending work without claiming a network request. */
+.sidebar-search.search-pending {box-shadow:inset 0 -2px 0 var(--accent);}

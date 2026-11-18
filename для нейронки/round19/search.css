@@ -122,3 +122,14 @@
 }
 /* Local filtering is debounced; the field exposes pending work without claiming a network request. */
 .sidebar-search.search-pending {box-shadow:inset 0 -2px 0 var(--accent);}
+
+/* Round20: search highlight, in-chat results, jump target. */
+.chat-row mark,.search-result mark{background:color-mix(in srgb,var(--accent,#aebfee) 30%,transparent);color:inherit;border-radius:4px;padding:0 1px}
+.search-results{display:grid;gap:6px;margin-top:8px;max-height:50vh;overflow:auto}
+.search-result{all:unset;box-sizing:border-box;display:block;cursor:pointer;min-height:44px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,currentColor 6%,transparent);overflow-wrap:anywhere}
+.search-result:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
+.search-result:focus-visible{outline:2px solid var(--accent,#aebfee);outline-offset:2px}
+.search-result small{display:block;opacity:.7;margin-top:2px}
+.message.search-hit{animation:aqua-search-hit 1.6s ease-out}
+@keyframes aqua-search-hit{0%,30%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#aebfee) 55%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.message.search-hit{animation:none;outline:2px solid var(--accent,#aebfee);outline-offset:2px}}

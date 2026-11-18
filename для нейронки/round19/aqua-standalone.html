@@ -2522,6 +2522,17 @@ h2,
 /* Local filtering is debounced; the field exposes pending work without claiming a network request. */
 .sidebar-search.search-pending {box-shadow:inset 0 -2px 0 var(--accent);}
 
+/* Round20: search highlight, in-chat results, jump target. */
+.chat-row mark,.search-result mark{background:color-mix(in srgb,var(--accent,#aebfee) 30%,transparent);color:inherit;border-radius:4px;padding:0 1px}
+.search-results{display:grid;gap:6px;margin-top:8px;max-height:50vh;overflow:auto}
+.search-result{all:unset;box-sizing:border-box;display:block;cursor:pointer;min-height:44px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,currentColor 6%,transparent);overflow-wrap:anywhere}
+.search-result:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
+.search-result:focus-visible{outline:2px solid var(--accent,#aebfee);outline-offset:2px}
+.search-result small{display:block;opacity:.7;margin-top:2px}
+.message.search-hit{animation:aqua-search-hit 1.6s ease-out}
+@keyframes aqua-search-hit{0%,30%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#aebfee) 55%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.message.search-hit{animation:none;outline:2px solid var(--accent,#aebfee);outline-offset:2px}}
+
 </style>
     <style>
 /* chat-transition.css: edit the source file, then rebuild. */
@@ -5383,17 +5394,74 @@ function render() {
   if (state.page === "chats") renderChat();
   else renderPage();
 }
+/* Round20: tolerant search and unique handles (client-side demo only). */
+function normalizeSearch(value) {
+  return String(value ?? "")
+    .toLocaleLowerCase("ru")
+    .replace(/ё/g, "е")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^@+/, "");
+}
+function chatMatches(c, q) {
+  if (!q) return true;
+  const hay = normalizeSearch([c.name, c.sub, c.username].filter(Boolean).join(" "));
+  return q.split(" ").every((part) => hay.includes(part.replace(/^@+/, "")));
+}
+function highlightMatch(text, q) {
+  const plain = String(text ?? "");
+  if (!q) return esc(plain);
+  const lower = plain.toLocaleLowerCase("ru").replace(/ё/g, "е");
+  if (lower.length !== plain.length) return esc(plain);
+  const ranges = [];
+  for (const raw of q.split(" ")) {
+    const part = raw.replace(/^@+/, "");
+    if (!part) continue;
+    for (let at = lower.indexOf(part); at !== -1; at = lower.indexOf(part, at + part.length))
+      ranges.push([at, at + part.length]);
+  }
+  if (!ranges.length) return esc(plain);
+  ranges.sort((a, b) => a[0] - b[0]);
+  let out = "", pos = 0;
+  for (const [start, end] of ranges) {
+    if (end <= pos) continue;
+    const from = Math.max(start, pos);
+    out += esc(plain.slice(pos, from)) + "<mark>" + esc(plain.slice(from, end)) + "</mark>";
+    pos = end;
+  }
+  return out + esc(plain.slice(pos));
+}
+function nextChatId() {
+  return chats.reduce((max, c) => Math.max(max, Number(c.id) || 0), 0) + 1;
+}
+function normalizeUsername(value) {
+  return String(value ?? "").trim().replace(/^@+/, "").toLowerCase();
+}
+function usernameProblem(username) {
+  if (!/^[a-z0-9._]{3,32}$/.test(username))
+    return "Имя пользователя: 3–32 символа, латиница, цифры, точка или _";
+  const taken =
+    username === normalizeUsername(state.profile.username) ||
+    chats.some((c) => normalizeUsername(c.username) === username);
+  return taken ? "Это имя пользователя уже занято" : "";
+}
+function reportFieldError(input, message) {
+  if (!input) { toast(message); return; }
+  input.setCustomValidity(message);
+  input.reportValidity();
+  input.addEventListener("input", () => input.setCustomValidity(""), { once: true });
+}
 function renderList(query = "") {
   const list = chats.filter(
     (c) =>
       (state.filter !== "unread" || c.badge) &&
-      c.name.toLowerCase().includes(query.toLowerCase()),
+      chatMatches(c, normalizeSearch(query)),
   );
   $("#chat-list").innerHTML =
     list
       .map(
         (c) =>
-          `<button class="chat-row ${state.chat === c.id ? "selected" : ""}" data-action="chat:${c.id}">${avatar(c)}<span class="row-copy"><strong>${esc(c.name)} ${c.id === 0 ? '<span style="color:#b3c5fa">✦</span>' : ""}</strong><p>${esc(c.sub)}</p></span><span class="row-meta"><span class="time">${c.time}</span>${c.badge ? `<span class="badge">${c.badge}</span>` : `<span class="ticks">${c.pin ? icon("pin") : ""}</span>`}</span></button>`,
+          `<button class="chat-row ${state.chat === c.id ? "selected" : ""}" data-action="chat:${c.id}">${avatar(c)}<span class="row-copy"><strong>${highlightMatch(c.name, normalizeSearch(query))} ${c.id === 0 ? '<span style="color:#b3c5fa">✦</span>' : ""}</strong><p>${highlightMatch(c.sub, normalizeSearch(query))}</p></span><span class="row-meta"><span class="time">${c.time}</span>${c.badge ? `<span class="badge">${c.badge}</span>` : `<span class="ticks">${c.pin ? icon("pin") : ""}</span>`}</span></button>`,
       )
       .join("") || '<p class="empty">Чаты не найдены</p>';
 }
@@ -5562,6 +5630,11 @@ function modal(title, body) {
   if (!$("#modal").open) $("#modal").showModal();
 }
 function toast(t) {
+  // Round20: announce toasts to screen readers.
+  if (!$("#toast").hasAttribute("role")) {
+    $("#toast").setAttribute("role", "status");
+    $("#toast").setAttribute("aria-live", "polite");
+  }
   $("#toast").textContent = t;
   $("#toast").classList.add("show");
   clearTimeout(window.toastTimer);
@@ -5775,13 +5848,14 @@ document.addEventListener("click", (e) => {
   } else if (a === "chatsearch") {
     modal(
       "Поиск в переписке",
-      '<label class="field">Текст сообщения<input id="message-search" placeholder="Найти…"></label><div id="search-results" class="note">Введите текст для поиска</div>',
+      '<label class="field">Текст сообщения<input id="message-search" type="search" autocomplete="off" placeholder="Найти…"></label><div id="search-results" class="note" aria-live="polite">Введите текст для поиска</div>',
     );
+    $("#message-search")?.focus(); // Round20: focus search field
   } else if (a === "info") {
     const c = chats.find((c) => c.id === state.chat);
     modal(
       c.saved ? "Избранное" : "Информация о чате",
-      `<div class="profile-hero">${avatar(c)}<h2>${esc(c.name)}</h2><p>${c.group ? "5 участников" : c.channel ? "@aqua_design" : c.saved ? "Ваше личное пространство" : "@" + (c.id === 1 ? "alexandra" : "aqua_user")}</p></div><p class="note">${c.saved ? "Сохраняйте сообщения, идеи и файлы." : c.group ? "Обсуждаем идеи и создаём Aqua вместе." : "Маленькие моменты. Большие воспоминания."}</p><div class="group">${row("image", "Медиа и файлы", "Фото из переписки", "media")}${c.group ? row("contacts", "Участники", "Алексей, Александра, Михаил и ещё 2", "members") : ""}</div>`,
+      `<div class="profile-hero">${avatar(c)}<h2>${esc(c.name)}</h2><p>${c.group ? "5 участников" : c.channel ? "@" + esc(c.username || "aqua_design") : c.saved ? "Ваше личное пространство" : "@" + esc(c.username || (c.id === 1 ? "alexandra" : "user" + c.id))}</p></div><p class="note">${c.saved ? "Сохраняйте сообщения, идеи и файлы." : c.group ? "Обсуждаем идеи и создаём Aqua вместе." : "Маленькие моменты. Большие воспоминания."}</p><div class="group">${row("image", "Медиа и файлы", "Фото из переписки", "media")}${c.group ? row("contacts", "Участники", "Алексей, Александра, Михаил и ещё 2", "members") : ""}</div>`,
     );
   } else if (a === "new")
     modal(
@@ -5931,8 +6005,18 @@ document.addEventListener("submit", (e) => {
     const name = $("#new-name").value.trim();
     if (!name) return;
     const kind = e.target.dataset.kind;
+    // Round20: channel handle is stored and must be unique.
+    const handle = kind === "channel" ? normalizeUsername($("#new-username")?.value) : "";
+    if (kind === "channel") {
+      const problem = usernameProblem(handle);
+      if (problem) {
+        reportFieldError($("#new-username"), problem);
+        return;
+      }
+    }
     const c = {
-      id: chats.length,
+      id: nextChatId(),
+      username: handle || undefined,
       name,
       sub: "Чат создан",
       time: "Сейчас",
@@ -5960,8 +6044,16 @@ document.addEventListener("submit", (e) => {
   if (e.target.id === "contact-form") {
     const name = $("#contact-name").value.trim();
     if (!name) return;
+    // Round20: the username field is no longer discarded; it must be unique.
+    const username = normalizeUsername($("#contact-username")?.value);
+    const problem = usernameProblem(username);
+    if (problem) {
+      reportFieldError($("#contact-username"), problem);
+      return;
+    }
     chats.push({
-      id: chats.length,
+      id: nextChatId(),
+      username,
       name,
       sub: "Новый контакт",
       time: "Сейчас",
@@ -6010,13 +6102,17 @@ app.addEventListener("input", (e) => {
 });
 document.addEventListener("input", (e) => {
   if (e.target.id === "message-search") {
-    $("#search-results").innerHTML =
-      messages[state.chat]
-        .filter((m) =>
-          (m.text || "").toLowerCase().includes(e.target.value.toLowerCase()),
-        )
-        .map((m) => `<p style="padding:10px">${esc(m.text)}</p>`)
-        .join("") || "Ничего не найдено";
+    // Round20: tolerant search, highlighted results, jump to message.
+    const q = normalizeSearch(e.target.value);
+    const label = (m) => m.text || m.file?.name || "";
+    const hits = q
+      ? (messages[state.chat] || []).map((m, i) => [m, i]).filter(([m]) => chatMatches({ name: label(m) }, q))
+      : [];
+    $("#search-results").innerHTML = !q
+      ? "Введите текст для поиска"
+      : hits.length
+        ? `<p>Найдено: ${hits.length}</p><div class="search-results">${hits.map(([m, i]) => `<button type="button" class="search-result" data-action="gotomessage:${i}">${highlightMatch(label(m), q)}<small>${m.out ? "Вы" : "Собеседник"}${m.time ? " · " + esc(m.time) : ""}</small></button>`).join("")}</div>`
+        : "Ничего не найдено";
   }
 });
 app.addEventListener("change", (e) => {
@@ -6246,6 +6342,24 @@ AquaChat.install();
 AquaSearch.install();
 AquaSettings.init();
 render();
+
+/* Round20: jump from in-chat search to the message. */
+document.addEventListener("click", (e) => {
+  const el = e.target.closest('[data-action^="gotomessage:"]');
+  if (!el) return;
+  const index = el.dataset.action.slice("gotomessage:".length);
+  closeModal();
+  setTimeout(() => {
+    const node = document.querySelector(`#messages [data-message="${CSS.escape(index)}"]`);
+    if (!node) return;
+    node.scrollIntoView({ block: "center", behavior: AquaMotion.isEnabled() ? "smooth" : "auto" });
+    node.classList.remove("search-hit");
+    void node.offsetWidth;
+    node.classList.add("search-hit");
+    setTimeout(() => node.classList.remove("search-hit"), 1700);
+    node.focus({ preventScroll: true });
+  }, 200);
+});
 
 </script>
     <script>
