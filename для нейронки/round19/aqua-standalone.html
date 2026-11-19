@@ -4194,6 +4194,8 @@ const AquaChat = (() => {
   const mobile = () => matchMedia("(max-width:700px)").matches;
   const rect = (n) => n?.getBoundingClientRect();
   const clamp = (n) => Math.max(0, Math.min(1, n));
+  const CARD_TRAVEL = 0.3; /* chat enters from the right by 30% of the width */
+  const LIST_TRAVEL = 0.14; /* list parallax to the left */
   function clean() {
     ++token;
     for (const n of layers) {
@@ -4313,7 +4315,11 @@ const AquaChat = (() => {
     scene={card,list:retained,parts:[],shared:[]};
   }
   function values(p) {
-    return {card:{opacity:p},list:{opacity:1,transform:'none'}};
+    const w = scene?.card.clientWidth || 0;
+    return {
+      card: { opacity: clamp(p * 2.2), transform: `translateX(${(1 - p) * w * CARD_TRAVEL}px)` },
+      list: { opacity: clamp(1 - p * 1.5), transform: `translateX(${-p * w * LIST_TRAVEL}px)` },
+    };
   }
   function sharedFrame() {return {};}
   function partFrame(item, p) {
@@ -4339,12 +4345,16 @@ const AquaChat = (() => {
   async function animate(to, duration = 260) {
     if (!scene) return;
     const current = progress,
-      own = token,
-      v0 = values(current),
-      v1 = values(to);
-    const track=(node,frames,time)=>AquaMotion.play(node,frames,time,0,"standard",true);
+      own = token;
+    const curve = to < current ? "presence" : "standard";
+    const track=(node,frames,time)=>AquaMotion.play(node,frames,time,0,curve,true);
+    const sampled = (key) =>
+      Array.from({ length: 21 }, (_, index) => {
+        const offset = index / 20;
+        return { ...values(current + (to - current) * offset)[key], offset };
+      });
     await Promise.all([
-      track(scene.card, [v0.card, v1.card], duration),
+      track(scene.card, sampled("card"), duration),
       track(
         scene.list,
         Array.from({ length: 21 }, (_, index) => {
@@ -4427,13 +4437,13 @@ const AquaChat = (() => {
     build();
     progress = 0;
     scrub(0);
-    await animate(1, 150);
+    await animate(1);
     document.querySelectorAll(".row-ripple").forEach((n) => n.remove());
     if (own === token) clean();
   }
   function measuredProgress() {
     if(!scene)return 1;
-    return clamp(parseFloat(getComputedStyle(scene.card).opacity) || 0);
+    return clamp(1 - new DOMMatrix(getComputedStyle(scene.card).transform).m41 / (scene.card.clientWidth * CARD_TRAVEL));
   }
   async function close(fromBack = false) {
     if (state.page !== "chats" || !state.mobile) return;
@@ -4446,7 +4456,7 @@ const AquaChat = (() => {
     AquaMessages.close(true);
     build();
     scrub(from);
-    await animate(0, 160);
+    await animate(0, 260);
     if (own !== token) return;
     completeClose(fromBack);
   }
@@ -4472,7 +4482,7 @@ const AquaChat = (() => {
   }
   async function finishGesture(commit) {
     const own = token;
-    await animate(commit ? 0 : 1, commit ? 160 : 200);
+    await animate(commit ? 0 : 1, commit ? 220 : 240);
     if (own !== token) return;
     if (commit) completeClose();
     else clean();
