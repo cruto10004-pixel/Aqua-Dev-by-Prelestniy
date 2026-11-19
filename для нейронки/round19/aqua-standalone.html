@@ -2533,6 +2533,8 @@ h2,
 @keyframes aqua-search-hit{0%,30%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#aebfee) 55%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.message.search-hit{animation:none;outline:2px solid var(--accent,#aebfee);outline-offset:2px}}
 .detail-card mark{background:color-mix(in srgb,var(--accent,#aebfee) 30%,transparent);color:inherit;border-radius:4px;padding:0 1px}
+/* Round21: the pill itself is the focus surface; the input's own outline drew side bars. */
+.sidebar-search input:focus-visible{outline:none}
 
 </style>
     <style>
@@ -4311,7 +4313,7 @@ const AquaChat = (() => {
     scene={card,list:retained,parts:[],shared:[]};
   }
   function values(p) {
-    return {card:{transform:`translateX(${(1-p)*scene.card.clientWidth}px)`},list:{opacity:1,transform:'none'}};
+    return {card:{opacity:p},list:{opacity:1,transform:'none'}};
   }
   function sharedFrame() {return {};}
   function partFrame(item, p) {
@@ -4374,10 +4376,26 @@ const AquaChat = (() => {
     ]);
     if (own === token) scrub(to);
   }
-  async function open(id, row) {
+  async function ripple(row, tapX) {
+    if (!row?.isConnected || !row.matches(".chat-row") || !mobile() || state.searchOpen || !AquaMotion.isEnabled()) return;
+    const box = row.getBoundingClientRect();
+    const at = tapX == null || !box.width ? 50 : Math.round(clamp((tapX - box.left) / box.width) * 100);
+    const wave = document.createElement("span");
+    wave.className = "row-ripple";
+    wave.setAttribute("aria-hidden", "true");
+    Object.assign(wave.style, { position: "absolute", inset: "0", borderRadius: "inherit", background: "#ffffff29", pointerEvents: "none" });
+    row.append(wave);
+    await AquaMotion.play(wave, [
+      { clipPath: `inset(0 ${100 - at}% 0 ${at}% round 18px)` },
+      { clipPath: "inset(0 0 0 0 round 18px)" },
+    ], 130);
+  }
+  async function open(id, row, tapX) {
     if (pending) await pending;
     const request = ++requestId;
     const start = remember(row);
+    await ripple(row, tapX);
+    if (request !== requestId) return;
     clean();
     if (state.page === "chats" && !state.mobile) {
       retained = document.querySelector(".sidebar");
@@ -4409,12 +4427,13 @@ const AquaChat = (() => {
     build();
     progress = 0;
     scrub(0);
-    await animate(1);
+    await animate(1, 150);
+    document.querySelectorAll(".row-ripple").forEach((n) => n.remove());
     if (own === token) clean();
   }
   function measuredProgress() {
     if(!scene)return 1;
-    return clamp(1-new DOMMatrix(getComputedStyle(scene.card).transform).m41/scene.card.clientWidth);
+    return clamp(parseFloat(getComputedStyle(scene.card).opacity) || 0);
   }
   async function close(fromBack = false) {
     if (state.page !== "chats" || !state.mobile) return;
@@ -4427,7 +4446,7 @@ const AquaChat = (() => {
     AquaMessages.close(true);
     build();
     scrub(from);
-    await animate(0, 240);
+    await animate(0, 160);
     if (own !== token) return;
     completeClose(fromBack);
   }
@@ -4453,7 +4472,7 @@ const AquaChat = (() => {
   }
   async function finishGesture(commit) {
     const own = token;
-    await animate(commit ? 0 : 1, commit ? 220 : 240);
+    await animate(commit ? 0 : 1, commit ? 160 : 200);
     if (own !== token) return;
     if (commit) completeClose();
     else clean();
@@ -4468,7 +4487,7 @@ const AquaChat = (() => {
         if (action.startsWith("chat:")) {
           event.preventDefault();
           event.stopImmediatePropagation();
-          open(+action.slice(5), button);
+          open(+action.slice(5), button, event.clientX);
         } else if (
           action === "back" &&
           state.page === "chats" &&
@@ -5371,7 +5390,7 @@ function normalizeSearch(value) {
 }
 function chatMatches(c, q) {
   if (!q) return true;
-  const hay = normalizeSearch([c.name, c.sub, c.username, c.description].filter(Boolean).join(" "));
+  const hay = normalizeSearch(c.name);
   return q.split(" ").every((part) => hay.includes(part.replace(/^@+/, "")));
 }
 function highlightMatch(text, q) {
@@ -5427,7 +5446,7 @@ function renderList(query = "") {
     list
       .map(
         (c) =>
-          `<button class="chat-row ${state.chat === c.id ? "selected" : ""}" data-action="chat:${c.id}">${avatar(c)}<span class="row-copy"><strong>${highlightMatch(c.name, normalizeSearch(query))} ${c.id === 0 ? '<span style="color:#b3c5fa">✦</span>' : ""}</strong><p>${highlightMatch(c.sub, normalizeSearch(query))}</p></span><span class="row-meta"><span class="time">${c.time}</span>${c.badge ? `<span class="badge">${c.badge}</span>` : `<span class="ticks">${c.pin ? icon("pin") : ""}</span>`}</span></button>`,
+          `<button class="chat-row ${state.chat === c.id ? "selected" : ""}" data-action="chat:${c.id}">${avatar(c)}<span class="row-copy"><strong>${highlightMatch(c.name, normalizeSearch(query))} ${c.id === 0 ? '<span style="color:#b3c5fa">✦</span>' : ""}</strong><p>${esc(c.sub)}</p></span><span class="row-meta"><span class="time">${c.time}</span>${c.badge ? `<span class="badge">${c.badge}</span>` : `<span class="ticks">${c.pin ? icon("pin") : ""}</span>`}</span></button>`,
       )
       .join("") || '<p class="empty">Чаты не найдены</p>';
 }

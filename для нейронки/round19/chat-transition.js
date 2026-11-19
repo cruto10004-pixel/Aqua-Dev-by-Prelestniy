@@ -139,7 +139,7 @@ const AquaChat = (() => {
     scene={card,list:retained,parts:[],shared:[]};
   }
   function values(p) {
-    return {card:{transform:`translateX(${(1-p)*scene.card.clientWidth}px)`},list:{opacity:1,transform:'none'}};
+    return {card:{opacity:p},list:{opacity:1,transform:'none'}};
   }
   function sharedFrame() {return {};}
   function partFrame(item, p) {
@@ -202,10 +202,26 @@ const AquaChat = (() => {
     ]);
     if (own === token) scrub(to);
   }
-  async function open(id, row) {
+  async function ripple(row, tapX) {
+    if (!row?.isConnected || !row.matches(".chat-row") || !mobile() || state.searchOpen || !AquaMotion.isEnabled()) return;
+    const box = row.getBoundingClientRect();
+    const at = tapX == null || !box.width ? 50 : Math.round(clamp((tapX - box.left) / box.width) * 100);
+    const wave = document.createElement("span");
+    wave.className = "row-ripple";
+    wave.setAttribute("aria-hidden", "true");
+    Object.assign(wave.style, { position: "absolute", inset: "0", borderRadius: "inherit", background: "#ffffff29", pointerEvents: "none" });
+    row.append(wave);
+    await AquaMotion.play(wave, [
+      { clipPath: `inset(0 ${100 - at}% 0 ${at}% round 18px)` },
+      { clipPath: "inset(0 0 0 0 round 18px)" },
+    ], 130);
+  }
+  async function open(id, row, tapX) {
     if (pending) await pending;
     const request = ++requestId;
     const start = remember(row);
+    await ripple(row, tapX);
+    if (request !== requestId) return;
     clean();
     if (state.page === "chats" && !state.mobile) {
       retained = document.querySelector(".sidebar");
@@ -237,12 +253,13 @@ const AquaChat = (() => {
     build();
     progress = 0;
     scrub(0);
-    await animate(1);
+    await animate(1, 150);
+    document.querySelectorAll(".row-ripple").forEach((n) => n.remove());
     if (own === token) clean();
   }
   function measuredProgress() {
     if(!scene)return 1;
-    return clamp(1-new DOMMatrix(getComputedStyle(scene.card).transform).m41/scene.card.clientWidth);
+    return clamp(parseFloat(getComputedStyle(scene.card).opacity) || 0);
   }
   async function close(fromBack = false) {
     if (state.page !== "chats" || !state.mobile) return;
@@ -255,7 +272,7 @@ const AquaChat = (() => {
     AquaMessages.close(true);
     build();
     scrub(from);
-    await animate(0, 240);
+    await animate(0, 160);
     if (own !== token) return;
     completeClose(fromBack);
   }
@@ -281,7 +298,7 @@ const AquaChat = (() => {
   }
   async function finishGesture(commit) {
     const own = token;
-    await animate(commit ? 0 : 1, commit ? 220 : 240);
+    await animate(commit ? 0 : 1, commit ? 160 : 200);
     if (own !== token) return;
     if (commit) completeClose();
     else clean();
@@ -296,7 +313,7 @@ const AquaChat = (() => {
         if (action.startsWith("chat:")) {
           event.preventDefault();
           event.stopImmediatePropagation();
-          open(+action.slice(5), button);
+          open(+action.slice(5), button, event.clientX);
         } else if (
           action === "back" &&
           state.page === "chats" &&

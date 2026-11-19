@@ -158,7 +158,7 @@ function normalizeSearch(value) {
 }
 function chatMatches(c, q) {
   if (!q) return true;
-  const hay = normalizeSearch([c.name, c.sub, c.username, c.description].filter(Boolean).join(" "));
+  const hay = normalizeSearch(c.name);
   return q.split(" ").every((part) => hay.includes(part.replace(/^@+/, "")));
 }
 function highlightMatch(text, q) {
@@ -214,7 +214,7 @@ function renderList(query = "") {
     list
       .map(
         (c) =>
-          `<button class="chat-row ${state.chat === c.id ? "selected" : ""}" data-action="chat:${c.id}">${avatar(c)}<span class="row-copy"><strong>${highlightMatch(c.name, normalizeSearch(query))} ${c.id === 0 ? '<span style="color:#b3c5fa">✦</span>' : ""}</strong><p>${highlightMatch(c.sub, normalizeSearch(query))}</p></span><span class="row-meta"><span class="time">${c.time}</span>${c.badge ? `<span class="badge">${c.badge}</span>` : `<span class="ticks">${c.pin ? icon("pin") : ""}</span>`}</span></button>`,
+          `<button class="chat-row ${state.chat === c.id ? "selected" : ""}" data-action="chat:${c.id}">${avatar(c)}<span class="row-copy"><strong>${highlightMatch(c.name, normalizeSearch(query))} ${c.id === 0 ? '<span style="color:#b3c5fa">✦</span>' : ""}</strong><p>${esc(c.sub)}</p></span><span class="row-meta"><span class="time">${c.time}</span>${c.badge ? `<span class="badge">${c.badge}</span>` : `<span class="ticks">${c.pin ? icon("pin") : ""}</span>`}</span></button>`,
       )
       .join("") || '<p class="empty">Чаты не найдены</p>';
 }
